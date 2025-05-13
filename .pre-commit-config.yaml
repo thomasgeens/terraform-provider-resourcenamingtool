@@ -1,0 +1,76 @@
+# Copyright (c) Thomas Geens
+# SPDX-License-Identifier: MIT
+
+---
+repos:
+  - repo: local
+    hooks:
+      - id: clean-clutter
+        name: Clean up clutter
+        entry: make clean
+        language: system
+        pass_filenames: false
+      - id: add-headers
+        name: Add copyright headers
+        description: Adds missing copyright headers to all source code files
+        entry: copywrite headers
+        language: system
+        pass_filenames: false
+      - id: check-headers
+        name: Validate copyright headers
+        description: Checks if any copyright headers are missing, but does not make changes
+        entry: copywrite headers --plan
+        language: system
+        pass_filenames: false
+      - id: add-license
+        name: Add or fix repo license
+        description: Adds or updates a non-compliant LICENSE file
+        entry: copywrite license
+        language: system
+        pass_filenames: false
+      - id: check-license
+        name: Validate repo license
+        description: Checks if a LICENSE file is valid, but does not make changes
+        entry: copywrite license --plan
+        language: system
+        pass_filenames: false
+  # - repo: https://github.com/pre-commit/pre-commit-hooks
+  #   rev: v5.0.0
+  #   hooks:
+  #     - id: check-yaml
+  #     - id: end-of-file-fixer
+  #     # exclude: ^directory/file
+  #     - id: trailing-whitespace
+  #     # exclude: ^directory/file
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-vet
+        exclude: ^tools/tools.go
+      - id: go-imports
+      - id: go-cyclo
+        args: [-over=200]
+      - id: validate-toml
+      - id: no-go-testing
+      - id: golangci-lint
+      # Disabling until gocritic fixes the "Unexpected package creation during export data loading"
+      # error that shows up when using packages containing generics
+      # - id: go-critic
+      - id: go-unit-tests
+      - id: go-build
+      - id: go-mod-tidy
+  - repo: local
+    hooks:
+      - id: go-sec
+        name: GoSec
+        description: Run GoSec security analysis
+        entry: gosec ./...
+        # args: ['-fmt=json', '-out=gosec.json', '-exclude=G101,G102,G104,G107,G201,G202,G203,G204,G501']
+        language: system
+        pass_filenames: false
+      - id: clean-clutter
+        name: Clean up clutter
+        entry: make clean
+        language: system
+        pass_filenames: false

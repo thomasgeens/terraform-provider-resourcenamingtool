@@ -1,0 +1,19 @@
+# Copyright (c) Thomas Geens
+# SPDX-License-Identifier: MIT
+
+name: "CodeQL"
+
+queries:
+  - uses: security-and-quality
+
+paths:
+  - internal
+  - main.go
+
+paths-ignore:
+  - '**/vendor/**'
+  - '**/testdata/**'
+  - '**/*_test.go'
+
+language:
+  - go

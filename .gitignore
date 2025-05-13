@@ -1,0 +1,79 @@
+# macOS system files
+# General macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+
+# Temp files
+*.log
+*.bak
+*~
+.*.swp
+.idea
+*.iml
+*.test
+*.iml
+
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go 
+# workspace file
+go.work
+go.work.sum
+modules-dev/
+/pkg/
+
+# env file
+.env
+
+# Terraform files
+example.tf
+terraform.tfplan
+terraform.tfstate
+./*.tfstate
+.terraform/
+
+# Vagrant/Website build files
+website/.vagrant
+website/.bundle
+website/build
+website/node_modules
+.vagrant/
+*.backup
+website/vendor
+
+# Test exclusions
+!command/test-fixtures/**/*.tfstate
+!command/test-fixtures/**/.terraform/
+
+# Keep windows files with windows line endings
+*.winfile eol=crlf
+
+# Sensitive files
+*.pem
+*.key
+*.p12
+*.pfx
+*.asc
+*.gpg
+*.pgp
+*.jks
