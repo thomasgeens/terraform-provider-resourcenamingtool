@@ -1,0 +1,10 @@
+The Resource Naming Tool provider offers a flexible and standardized way to generate resource names across various cloud environments, including Azure, AWS, and GCP. It aligns with established best practices such as Microsoft's Cloud Adoption Framework (CAF), AWS Well-Architected Framework (WAF), and Google Cloud naming conventions.
+
+Key Features:
+- Consistent Naming: Enforces uniform naming conventions across your infrastructure.
+- Multi-Cloud Support: Provides default naming patterns tailored for Azure, AWS, and GCP.
+- Customizable Defaults: Allows setting default values for common naming components (e.g., environment, region, basename) at the provider level, simplifying function calls.
+- Extensible: Supports defining additional custom components and overriding built-in naming patterns to fit specific organizational needs.
+- Simplified Configuration: Configure once at the provider level and reuse across multiple resource naming function calls.
+
+This provider helps improve resource organization, simplifies management, and enhances clarity in complex cloud deployments by ensuring that all resources are named predictably and meaningfully.
