@@ -1,0 +1,5 @@
+# Copyright (c) Thomas Geens
+# SPDX-License-Identifier: MIT
+
+# Prettier friendly markdownlint config (all formatting rules disabled)
+extends: markdownlint/style/prettier

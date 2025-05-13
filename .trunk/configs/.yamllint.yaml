@@ -1,0 +1,10 @@
+# Copyright (c) Thomas Geens
+# SPDX-License-Identifier: MIT
+
+rules:
+  quoted-strings:
+    required: only-when-needed
+    extra-allowed: ["{|}"]
+  key-duplicates: {}
+  octal-values:
+    forbid-implicit-octal: true

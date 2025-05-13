@@ -1,0 +1,6 @@
+{
+    "cSpell.diagnosticLevel": "Hint", // Filter out cSpell errors in the problems panel
+    "gopls": {
+        "ui.diagnostic.analyses": { "unusedfunc": false } // Disable unused function analysis
+    }
+}

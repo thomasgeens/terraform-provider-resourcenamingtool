@@ -1,0 +1,10 @@
+# Copyright (c) Thomas Geens
+# SPDX-License-Identifier: MIT
+
+version: "0.2"
+ignorePaths: []
+dictionaryDefinitions: []
+dictionaries: []
+words: []
+ignoreWords: []
+import: []
