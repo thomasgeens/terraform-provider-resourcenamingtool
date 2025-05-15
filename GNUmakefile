@@ -77,6 +77,7 @@ run:
 # Generate documentation (if applicable)
 generate: clean
 	@echo "Generating documentation..."; \
+    rm -rf docs/; \
 	cd tools; go generate ./...
 
 # Help
