@@ -2,5 +2,25 @@
     "cSpell.diagnosticLevel": "Hint", // Filter out cSpell errors in the problems panel
     "gopls": {
         "ui.diagnostic.analyses": { "unusedfunc": false } // Disable unused function analysis
-    }
+    },
+    "github.copilot.chat.reviewSelection.instructions": [
+        {
+            "file": ".vscode/.copilot-review-instructions.md"
+        }
+    ],
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+        {
+            "file": ".vscode/.copilot-commit-message-instructions.md"
+        }
+    ],
+    "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
+        {
+            "file": ".vscode/.copilot-pull-request-description-instructions.md"
+        }
+    ],
+    "github.copilot.chat.testGeneration.instructions": [
+        {
+            "file": ".vscode/.copilot-test-instructions.md"
+        }
+    ],
 }
