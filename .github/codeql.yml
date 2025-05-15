@@ -1,7 +1,7 @@
 # Copyright (c) Thomas Geens
 # SPDX-License-Identifier: MIT
 
-name: "CodeQL"
+name: CodeQL
 
 queries:
   - uses: security-and-quality
