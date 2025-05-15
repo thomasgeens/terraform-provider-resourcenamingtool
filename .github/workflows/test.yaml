@@ -6,10 +6,25 @@ name: Tests
 on:
   pull_request:
     paths-ignore:
-      - 'README.md'
+      - README.md
+      - FUNDING.md
+      - SECURITY.md
+      - CODE_OF_CONDUCT.md
+      - CONTRIBUTING.md
+      - .github/ISSUE_TEMPLATE/**
+      - .github/PULL_REQUEST_TEMPLATE/**
+      - .github/FUNDING.yml
+
   push:
     paths-ignore:
-      - 'README.md'
+      - README.md
+      - FUNDING.md
+      - SECURITY.md
+      - CODE_OF_CONDUCT.md
+      - CONTRIBUTING.md
+      - .github/ISSUE_TEMPLATE/**
+      - .github/PULL_REQUEST_TEMPLATE/**
+      - .github/FUNDING.yml
 
 # Testing only needs permissions to read the repository contents.
 permissions:
