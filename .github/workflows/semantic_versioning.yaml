@@ -1,0 +1,149 @@
+# Terraform Provider semantic versioning workflow.
+name: CD - Create semantic version (tag)
+
+# This GitHub action initiates semantic versioning for each pull request to the default branch in normal mode (CI).
+# It can can also be triggered manually to create a new release candidate, and with a manual dry-run option.
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+    paths:
+      # Provider changes
+      - go.mod
+      - go.sum
+      - main.go
+      - docs/**
+      - examples/**
+      - internal/**
+      - tools/**
+      - terraform-registry-manifest.json
+      # CI changes
+      - .goreleaser.yaml # GoReleaser configuration changes
+      # Licensing changes
+      - .copywrite.hcl # Copywrite configuration changes
+      - LICENSE # License changes
+  workflow_dispatch:
+    inputs:
+      # trunk-ignore(checkov/CKV_GHA_7)
+      dry_run:
+        description: Run in dry-run mode
+        required: false
+        default: true
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      # Provider changes
+      - go.mod
+      - go.sum
+      - main.go
+      - docs/**
+      - examples/**
+      - internal/**
+      - tools/**
+      - terraform-registry-manifest.json
+      # CI changes
+      - .goreleaser.yaml # GoReleaser configuration changes
+      # Licensing changes
+      - .copywrite.hcl # Copywrite configuration changes
+      - LICENSE # License changes
+
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  # This environment variable is used to determine if the workflow is running in dry-run mode or not.
+  # We run in dry-run mode when the workflow is triggered manually with the input dry_run enabled, 
+  # or when the path is one of the following:
+  #   - .github/workflows/semantic_versioning.yaml
+  #   - .releaserc
+  DRY_RUN: ${{ github.event.inputs.dry_run || github.event_name == 'pull_request' || false }}
+
+jobs:
+  semantic_versioning:
+    name: Semantic Versioning
+    runs-on: ubuntu-latest
+    outputs:
+      new_release_git_tag: ${{ steps.set_output.outputs.new_release_git_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        # with:
+        #   # If using the @semantic-release/git plugin for protected branches, avoid persisting
+        #   # credentials as part of actions/checkout@v4 by setting the parameter persist-
+        #   # credentials: false. This credential does not have the required permission to operate
+        #   # on protected branches.
+        #   persist-credentials: false
+      - name: Report dry-run mode
+        run: |
+          if [ "${{ env.DRY_RUN }}" = "true" ]; then
+            echo "Running in dry-run mode"
+          else
+            echo "Running in normal mode (CI)"
+          fi
+      # trunk-ignore(checkov/CKV_GHA_2)
+      - name: Temporarily merge PR branch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          # Configure git
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          # Escape branch name and PR title for safe usage
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          TITLE="${{ github.event.pull_request.title }}"
+          ESCAPED_BRANCH="${BRANCH//\"/\\\"}"
+          ESCAPED_TITLE="${TITLE//\"/\\\"}"
+          # Perform merge with escaped values
+          git merge --no-ff "origin/${ESCAPED_BRANCH}" -m "${ESCAPED_TITLE}"
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4.2.0
+        with:
+          semantic_version: 24.2.3
+          dry_run: ${{ env.DRY_RUN }}
+          unset_gha_env: ${{ github.event_name == 'pull_request' }}
+          ci: ${{ github.event_name == 'pull_request' && false || '' }}          
+          # You can specify specifying version range for the extra plugins if you prefer.
+          extra_plugins: |
+            conventional-changelog-conventionalcommits
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Semantic Release Output
+        run: |
+          echo "Semantic Release Outputs:"
+          echo "New release published: ${{ steps.semantic.outputs.new_release_published }}"
+          echo "New release version: ${{ steps.semantic.outputs.new_release_version }}"
+          echo "New release major version: ${{ steps.semantic.outputs.new_release_major_version }}"
+          echo "New release minor version: ${{ steps.semantic.outputs.new_release_minor_version }}"
+          echo "New release patch version: ${{ steps.semantic.outputs.new_release_patch_version }}"
+          echo "New release channel: ${{ steps.semantic.outputs.new_release_channel }}"
+          echo "New release notes: ${{ steps.semantic.outputs.new_release_notes }}"
+          echo "New release git head: ${{ steps.semantic.outputs.new_release_git_head }}"
+          echo "New release git tag: ${{ steps.semantic.outputs.new_release_git_tag }}"
+          echo "Last release version: ${{ steps.semantic.outputs.last_release_version }}"
+          echo "Last release git head: ${{ steps.semantic.outputs.last_release_git_head }}"
+          echo "Last release git tag: ${{ steps.semantic.outputs.last_release_git_tag }}"
+      - name: Set jobs tag output
+        id: set_output
+        run: |
+          # Only set output if a new release was published
+          if [ "${{ steps.semantic.outputs.new_release_published }}" == "true" ]; then
+            echo "new_release_git_tag=${{ steps.semantic.outputs.new_release_git_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "new_release_git_tag=" >> $GITHUB_OUTPUT
+          fi
+
+  call_release:
+    name: Call workflow CD - Create version release package
+    needs: semantic_versioning
+    if: needs.semantic_versioning.outputs.new_release_git_tag != ''
+    uses: ./.github/workflows/release.yaml
+    with:
+      new_release_git_tag: ${{ needs.semantic_versioning.outputs.new_release_git_tag }}
+    secrets:
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

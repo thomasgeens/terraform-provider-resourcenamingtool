@@ -18,11 +18,11 @@
   "tagFormat": "${version}",
   "dryRun": false,
   "ci": true,
+  "preset": "conventionalcommits",
   "plugins": [
     [
       "@semantic-release/commit-analyzer",
       {
-        "preset": "conventionalcommits",
         "releaseRules": [
           {
             "type": "feat",
@@ -42,15 +42,15 @@
           },
           {
             "type": "build",
-            "release": false
+            "release": "minor"
           },
           {
             "type": "chore",
-            "release": false
+            "release": "patch"
           },
           {
             "type": "docs",
-            "release": false
+            "release": "patch"
           },
           {
             "type": "style",
@@ -60,7 +60,10 @@
             "type": "test",
             "release": false
           }
-        ]
+        ],
+        "parserOpts": {
+          "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES"]
+        }
       }
     ],
     "@semantic-release/release-notes-generator",
@@ -70,6 +73,12 @@
         "assets": [
           "CHANGELOG.md"
         ]
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md"
       }
     ],
     "@semantic-release/github"

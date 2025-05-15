@@ -1,30 +1,45 @@
 # Terraform Provider testing workflow.
-name: Tests
+name: CI - Build, SAST, Docs, Unit & AcceptanceTests
 
 # This GitHub action runs your tests for each pull request and push.
 # Optionally, you can turn it on using a schedule for regular testing.
 on:
   pull_request:
-    paths-ignore:
-      - README.md
-      - FUNDING.md
-      - SECURITY.md
-      - CODE_OF_CONDUCT.md
-      - CONTRIBUTING.md
-      - .github/ISSUE_TEMPLATE/**
-      - .github/PULL_REQUEST_TEMPLATE/**
-      - .github/FUNDING.yml
+    types: [opened, synchronize, reopened]
+    paths:
+      # Provider changes
+      - go.mod
+      - go.sum
+      - main.go
+      - docs/**
+      - examples/**
+      - internal/**
+      - tools/**
+      - terraform-registry-manifest.json
+      # CI changes
+      - .goreleaser.yaml # GoReleaser configuration changes
+      # Licensing changes
+      - .copywrite.hcl # Copywrite configuration changes
+      - LICENSE # License changes
 
   push:
-    paths-ignore:
-      - README.md
-      - FUNDING.md
-      - SECURITY.md
-      - CODE_OF_CONDUCT.md
-      - CONTRIBUTING.md
-      - .github/ISSUE_TEMPLATE/**
-      - .github/PULL_REQUEST_TEMPLATE/**
-      - .github/FUNDING.yml
+    branches:
+      - main
+    paths:
+      # Provider changes
+      - go.mod
+      - go.sum
+      - main.go
+      - docs/**
+      - examples/**
+      - internal/**
+      - tools/**
+      - terraform-registry-manifest.json
+      # CI changes
+      - .goreleaser.yaml # GoReleaser configuration changes
+      # Licensing changes
+      - .copywrite.hcl # Copywrite configuration changes
+      - LICENSE # License changes
 
 # Testing only needs permissions to read the repository contents.
 permissions:
@@ -35,7 +50,7 @@ permissions:
 jobs:
   # Ensure project builds before running testing matrix
   build:
-    name: Build, including Unit tests and SAST
+    name: Build, Unit tests and SAST
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -63,7 +78,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   generate:
-    name: Generate Code and Documentation
+    name: Generate Docs, License, Terraform Reg Manifest
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -72,10 +87,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      # We need the latest version of Terraform for our documentation generation to use
-      - uses: hashicorp/setup-terraform@v3.1.2
-        with:
-          terraform_wrapper: false
       - run: make generate
       - name: git diff
         run: |
@@ -84,7 +95,7 @@ jobs:
 
   # Run acceptance tests in a matrix with Terraform CLI versions
   test:
-    name: Acceptance tests for Terraform versions
+    name: Terraform v:{{ matrix.terraform }} Acceptance Tests
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -99,17 +110,22 @@ jobs:
           - 1.11.*
           - 1.12.*
     steps:
-      - uses: actions/checkout@v4.2.2 # v4.2.2
-      - uses: actions/setup-go@v5.5.0
+      - name: Checkout
+        uses: actions/checkout@v4.2.2 # v4.2.2
+      - name: Set up Go
+        uses: actions/setup-go@v5.5.0
         with:
           go-version-file: go.mod
           cache: true
-      - uses: hashicorp/setup-terraform@v3.1.2
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
         with:
           terraform_version: ${{ matrix.terraform }}
           terraform_wrapper: false
-      - run: go mod download
-      - env:
+      - name: Download Go modules
+        run: go mod download
+      - name: Terraform {{ matrix.terraform }} acceptance tests
+        env:
           TF_ACC: "1"
         run: go test -v -cover ./internal/provider/
         timeout-minutes: 10
