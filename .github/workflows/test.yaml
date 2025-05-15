@@ -51,14 +51,14 @@ jobs:
         with:
           version: latest
       - name: Static code initialization
-        uses: github/codeql-action/init@v2.21.2
+        uses: github/codeql-action/init@v3.28.17
         with:
           languages: go
           config-file: .github/codeql.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Static code analysis
-        uses: github/codeql-action/analyze@v2.21.2
+        uses: github/codeql-action/analyze@v3.28.17
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
