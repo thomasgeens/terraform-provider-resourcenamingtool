@@ -1,0 +1,82 @@
+# Terraform Provider semantic versioning workflow.
+name: Semantic versioning
+
+# This GitHub action initiates semantic versioning for each pull request to the default branch in normal mode (CI).
+# It can can also be triggered manually to create a new release candidate, and with a manual dry-run option.
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      # trunk-ignore(checkov/CKV_GHA_7)
+      dry_run:
+        description: Run in dry-run mode
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Report dry-run mode
+        run: |
+          if [ "${{ env.DRY_RUN }}" = "true" ]; then
+            echo "Running in dry-run mode"
+          else
+            echo "Running in normal mode (CI)"
+          fi
+      # trunk-ignore(checkov/CKV_GHA_2)
+      - name: Temporarily merge PR branch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          # Configure git
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          # Escape branch name and PR title for safe usage
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          TITLE="${{ github.event.pull_request.title }}"
+          ESCAPED_BRANCH="${BRANCH//\"/\\\"}"
+          ESCAPED_TITLE="${TITLE//\"/\\\"}"
+          # Perform merge with escaped values
+          git merge --no-ff "origin/${ESCAPED_BRANCH}" -m "${ESCAPED_TITLE}"
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          dry_run: ${{ env.DRY_RUN }}
+          unset_gha_env: ${{ github.event_name == 'pull_request' }}
+          ci: ${{ github.event_name == 'pull_request' && false || '' }}          
+          # You can specify specifying version range for the extra plugins if you prefer.
+          extra_plugins: |
+            @semantic-release/changelog@6.0.0
+            @semantic-release/commit-analyzer@9.0.0
+            @semantic-release/release-notes-generator@10.0.0
+            @semantic-release/git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Semantic Release Output
+        run: |
+          echo "Semantic Release Outputs:"
+          echo ${{ steps.semantic.outputs.new_release_published }}
+          echo ${{ steps.semantic.outputs.new_release_version }}
+          echo ${{ steps.semantic.outputs.new_release_major_version }}
+          echo ${{ steps.semantic.outputs.new_release_minor_version }}
+          echo ${{ steps.semantic.outputs.new_release_patch_version }}
+          echo ${{ steps.semantic.outputs.new_release_channel }}
+          echo ${{ steps.semantic.outputs.new_release_notes }}
+          echo ${{ steps.semantic.outputs.new_release_git_head }}
+          echo ${{ steps.semantic.outputs.new_release_git_tag }}
+          echo ${{ steps.semantic.outputs.last_release_version }}
+          echo ${{ steps.semantic.outputs.last_release_git_head }}
+          echo ${{ steps.semantic.outputs.last_release_git_tag }}
