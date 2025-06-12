@@ -61,7 +61,7 @@ jobs:
           cache: true
       - run: go mod download
       - name: Static code initialization
-        uses: github/codeql-action/init@v3.28.17
+        uses: github/codeql-action/init@v3.29.0
         with:
           languages: go
           config-file: .github/codeql.yml
@@ -73,7 +73,7 @@ jobs:
         with:
           version: latest
       - name: Static code analysis
-        uses: github/codeql-action/analyze@v3.28.17
+        uses: github/codeql-action/analyze@v3.29.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
