@@ -101,7 +101,7 @@ jobs:
           git merge --no-ff "origin/${ESCAPED_BRANCH}" -m "${ESCAPED_TITLE}"
       - name: Semantic Release
         id: semantic
-        uses: cycjimmy/semantic-release-action@v4.2.0
+        uses: cycjimmy/semantic-release-action@v4.2.2
         with:
           semantic_version: 24.2.3
           dry_run: ${{ env.DRY_RUN }}
