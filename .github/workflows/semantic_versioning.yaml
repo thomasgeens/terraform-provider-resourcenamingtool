@@ -71,10 +71,10 @@ jobs:
       new_release_git_tag: ${{ steps.set_output.outputs.new_release_git_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         # with:
         #   # If using the @semantic-release/git plugin for protected branches, avoid persisting
-        #   # credentials as part of actions/checkout@v4 by setting the parameter persist-
+        #   # credentials as part of actions/checkout@v5 by setting the parameter persist-
         #   # credentials: false. This credential does not have the required permission to operate
         #   # on protected branches.
         #   persist-credentials: false
