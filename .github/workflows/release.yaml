@@ -39,7 +39,7 @@ jobs:
           # based on the tag created by the `semantic_versioning` job.
           ref: ${{ github.event.inputs.new_release_git_tag || github.ref_name }}
       - name: Set up Go
-        uses: actions/setup-go@v5.5.0
+        uses: actions/setup-go@v6.0.0
         with:
           go-version-file: go.mod
           cache: true
