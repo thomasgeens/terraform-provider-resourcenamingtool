@@ -386,12 +386,11 @@ func (p *resourcenamingtoolFunctionsProvider) Functions(ctx context.Context) []f
 	logDebug(ctx, "Provider Functions: Instance %p", p)
 	return []func() function.Function{
 		func() function.Function {
-			// p.config should be set by either ValidateConfig or Configure by now.
+			// Functions() is called during GetProviderSchema RPC — before ValidateConfig or Configure.
+			// p.config may be nil here; the function's Run method handles that via f.config nil check.
 			if p.config == nil {
-				logWarn(ctx, "Provider Functions: Instance %p, p.config is nil when creating function instance. This may lead to issues if ProviderInstanceID is needed by the function. Initializing function with an empty config model.", p)
-				// Initialize with an empty model to avoid nil panics.
-				// The function's Run method will attempt to load default shared config if instanceID is empty.
-				return NewGenerateResourceNameFunction(ctx, &resourcenamingtoolProviderModel{}) // Pass ctx
+				logWarn(ctx, "Provider Functions: Instance %p, p.config is nil (ValidateConfig has not run yet). Function will use empty defaults unless f.config is populated later.", p)
+				return NewGenerateResourceNameFunction(ctx, &resourcenamingtoolProviderModel{})
 			}
 			instanceIDStr := "unknown_or_nil_in_p_config"
 			if !p.config.ProviderInstanceID.IsNull() && !p.config.ProviderInstanceID.IsUnknown() {

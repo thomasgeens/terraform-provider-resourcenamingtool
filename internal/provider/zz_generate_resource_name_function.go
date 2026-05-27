@@ -577,10 +577,10 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 	}
 
 	// Create the final namingPatterns map
-	namingPatterns, diags := types.MapValue(types.StringType, patternElements)
-	if diags.HasError() {
+	namingPatterns, mapDiags := types.MapValue(types.StringType, patternElements)
+	if mapDiags.HasError() {
 		logErrorWithFields(ctx, "Failed to create consolidated naming patterns map", map[string]interface{}{
-			"error": diags.Errors()[0].Summary(),
+			"error": mapDiags.Errors()[0].Summary(),
 		})
 	}
 
