@@ -19,6 +19,9 @@ make fmt           # go fmt ./...
 make lint          # golangci-lint run
 make clean         # remove binary, GOPATH copy, and internal/provider/.terraform
 
+# After changes to examples/, internal/provider/descriptions/, or provider schema (*.go):
+make generate      # regenerate docs — must be committed or CI generate job fails
+
 # Run a specific test by name
 TF_ACC=0 go test ./internal/provider -run=TestGenerateResourceNameFunction -v
 TF_ACC=1 go test ./internal/provider -run=TestAccProviderStatusDataSource -v
