@@ -1,5 +1,15 @@
 # Copyright (c) Thomas Geens
 
+terraform {
+  required_version = ">= 1.8.0"
+  required_providers {
+    resourcenamingtool = {
+      source  = "thomasgeens/resourcenamingtool"
+      version = "~> 0.1.0"
+    }
+  }
+}
+
 # Generate a resource name using solely the provider's configuration:
 #   - default_resource_type
 #   - default naming patterns

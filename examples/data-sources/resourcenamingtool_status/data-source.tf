@@ -1,5 +1,15 @@
 # Copyright (c) Thomas Geens
 
+terraform {
+  required_version = ">= 1.8.0"
+  required_providers {
+    resourcenamingtool = {
+      source  = "thomasgeens/resourcenamingtool"
+      version = "~> 0.1.0"
+    }
+  }
+}
+
 # An example of using the `resourcenamingtool_status` data source to retrieve the status of the Resource Naming Tool provider.
 data "resourcenamingtool_status" "example" {}
 
