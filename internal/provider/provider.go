@@ -1,4 +1,4 @@
-// Copyright (c) Thomas Geens
+// Copyright Thomas Geens 2025, 2026
 
 package provider
 
@@ -36,6 +36,7 @@ type resourcenamingtoolFunctionsProvider struct {
 }
 
 func (p *resourcenamingtoolFunctionsProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	logDebug(ctx, "Provider Metadata: Instance %p, Version: %s", p, p.version)
 	logDebug(ctx, "Loading resourcenamingtool metadata...")
 	// Debug log all provider metadata
 	logDebugWithFields(ctx, "Provider metadata", map[string]interface{}{
@@ -318,28 +319,54 @@ func (m resourcenamingtoolProviderModel) MarshalJSON() ([]byte, error) {
 // Configure prepares the provider for data sources and resources
 func (p *resourcenamingtoolFunctionsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	logInfo(ctx, "Configuring resourcenamingtool provider...")
+	logDebug(ctx, "Provider Configure: Instance %p", p)
+
+	// Retrieve provider_instance_id from the current configuration block
+	var currentProviderBlockConfig resourcenamingtoolProviderModel
+	diags := req.Config.Get(ctx, &currentProviderBlockConfig)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	instanceID := currentProviderBlockConfig.ProviderInstanceID.ValueString()
+	logDebug(ctx, "Provider Configure: Instance %p, ProviderInstanceID from HCL: '%s'", p, instanceID)
 
 	// Load configuration from the file that was saved during ValidateConfig
-	// This simplifies our model - ValidateConfig is the source of truth for configuration
-	logDebug(ctx, "Loading configuration from file that was saved during ValidateConfig")
-	config := loadProviderConfigFromFile(ctx)
+	logDebug(ctx, "Configure: Loading configuration from file for instance ID: '%s' (empty means default)", instanceID)
+	configFromFile := loadProviderConfigFromFile(ctx, instanceID) // Pass instanceID
 
-	if config == nil {
-		// If no configuration found in file, this is unexpected since ValidateConfig should have created it
-		logError(ctx, "No configuration file found, this is unexpected as ValidateConfig should have created it")
+	if configFromFile == nil {
+		// If no configuration found in file, this is unexpected since ValidateConfig should have created it.
+		// For robustness, we might log a warning and proceed with currentProviderBlockConfig if file load fails,
+		// but the design expects ValidateConfig to have prepared the file.
+		logWarn(ctx, "Configure: No configuration file found for instance ID '%s'. This is unexpected if ValidateConfig ran. Using configuration from request as a fallback, but this might indicate an issue.", instanceID)
+		// p.config = &currentProviderBlockConfig // Fallback: use raw config from request.
+		// OR, more strictly, error out because the file should exist.
+		var errMsg string
+		if instanceID != "" {
+			errMsg = fmt.Sprintf("Unable to load provider configuration from file for instance '%s'. ValidateConfig should have created this file.", instanceID)
+		} else {
+			errMsg = "Unable to load default provider configuration from file. ValidateConfig should have created this file. If using multiple provider instances, ensure 'provider_instance_id' is set on each."
+		}
+		logError(ctx, "%s", errMsg)
 		resp.Diagnostics.AddError(
 			"Configuration Load Error",
-			"Unable to load provider configuration from file. ValidateConfig should have created this file.",
+			errMsg,
 		)
 		return
 	}
 
-	logDebug(ctx, "Successfully loaded configuration from file")
+	logDebug(ctx, "Configure: Successfully loaded configuration from file for instance ID: '%s'", instanceID)
 
-	// Store the configuration in the provider struct
-	p.config = config
+	// Store the configuration in the provider struct. This is the authoritative version if Configure runs.
+	p.config = configFromFile
+	if p.config != nil && !p.config.ProviderInstanceID.IsNull() && !p.config.ProviderInstanceID.IsUnknown() {
+		logDebug(ctx, "Provider Configure: Instance %p, Set p.config.ProviderInstanceID to: '%s'", p, p.config.ProviderInstanceID.ValueString())
+	} else {
+		logDebug(ctx, "Provider Configure: Instance %p, p.config is nil or ProviderInstanceID is not set after loading from file for instanceID '%s'", p, instanceID)
+	}
 
-	logDebug(ctx, "Provider configuration complete")
+	logDebug(ctx, "Provider configuration complete via Configure for instance ID: '%s'", instanceID)
 }
 
 // Resources returns the resources to register for this provider
@@ -356,9 +383,22 @@ func (p *resourcenamingtoolFunctionsProvider) DataSources(ctx context.Context) [
 
 // Functions returns the functions to register for this provider
 func (p *resourcenamingtoolFunctionsProvider) Functions(ctx context.Context) []func() function.Function {
+	logDebug(ctx, "Provider Functions: Instance %p", p)
 	return []func() function.Function{
 		func() function.Function {
-			return NewGenerateResourceNameFunction(p.config)
+			// p.config should be set by either ValidateConfig or Configure by now.
+			if p.config == nil {
+				logWarn(ctx, "Provider Functions: Instance %p, p.config is nil when creating function instance. This may lead to issues if ProviderInstanceID is needed by the function. Initializing function with an empty config model.", p)
+				// Initialize with an empty model to avoid nil panics.
+				// The function's Run method will attempt to load default shared config if instanceID is empty.
+				return NewGenerateResourceNameFunction(ctx, &resourcenamingtoolProviderModel{}) // Pass ctx
+			}
+			instanceIDStr := "unknown_or_nil_in_p_config"
+			if !p.config.ProviderInstanceID.IsNull() && !p.config.ProviderInstanceID.IsUnknown() {
+				instanceIDStr = p.config.ProviderInstanceID.ValueString()
+			}
+			logDebug(ctx, "Provider Functions: Instance %p, Creating function with p.config (ProviderInstanceID: '%s')", p, instanceIDStr)
+			return NewGenerateResourceNameFunction(ctx, p.config) // Pass ctx
 		},
 	}
 }
@@ -367,22 +407,26 @@ func (p *resourcenamingtoolFunctionsProvider) Functions(ctx context.Context) []f
 // This is called before Configure to allow validating configuration values
 // This is our primary location for processing and caching configuration
 func (p *resourcenamingtoolFunctionsProvider) ValidateConfig(ctx context.Context, req provider.ValidateConfigRequest, resp *provider.ValidateConfigResponse) {
+	logDebug(ctx, "Provider ValidateConfig: Instance %p", p)
 	logDebug(ctx, "Validating resourcenamingtool provider configuration...")
 
 	// Retrieve provider data from configuration
-	var config resourcenamingtoolProviderModel
-	diags := req.Config.Get(ctx, &config)
+	var configModel resourcenamingtoolProviderModel // Renamed for clarity
+	diags := req.Config.Get(ctx, &configModel)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	instanceID := configModel.ProviderInstanceID.ValueString()
+	logDebug(ctx, "Provider ValidateConfig: Instance %p, ProviderInstanceID from HCL: '%s'", p, instanceID)
+
 	// Validate additional components if provided
 	logDebug(ctx, "Validating additional components...")
 	// Check if additional components are provided and validate them
-	if !config.AdditionalComponents.IsNull() && !config.AdditionalComponents.IsUnknown() {
-		logDebug(ctx, "Validating additional components: %s", config.AdditionalComponents.String())
-		for key, value := range config.AdditionalComponents.Elements() {
+	if !configModel.AdditionalComponents.IsNull() && !configModel.AdditionalComponents.IsUnknown() {
+		logDebug(ctx, "Validating additional components: %s", configModel.AdditionalComponents.String())
+		for key, value := range configModel.AdditionalComponents.Elements() {
 			// Validate that keys in additional components follow the expected pattern format
 			if !strings.HasPrefix(key, "{") || !strings.HasSuffix(key, "}") {
 				resp.Diagnostics.AddAttributeError(
@@ -413,9 +457,9 @@ func (p *resourcenamingtoolFunctionsProvider) ValidateConfig(ctx context.Context
 	// Validate additional naming patterns if provided
 	logDebug(ctx, "Validating additional naming patterns...")
 	// Check if additional naming patterns are provided and validate them
-	if !config.AdditionalNamingPatterns.IsNull() && !config.AdditionalNamingPatterns.IsUnknown() {
-		logDebug(ctx, "Validating additional naming patterns: %s", config.AdditionalNamingPatterns.String())
-		for key, value := range config.AdditionalNamingPatterns.Elements() {
+	if !configModel.AdditionalNamingPatterns.IsNull() && !configModel.AdditionalNamingPatterns.IsUnknown() {
+		logDebug(ctx, "Validating additional naming patterns: %s", configModel.AdditionalNamingPatterns.String())
+		for key, value := range configModel.AdditionalNamingPatterns.Elements() {
 			// Check that pattern values are not null
 			if value.IsNull() {
 				resp.Diagnostics.AddAttributeError(
@@ -476,52 +520,60 @@ func (p *resourcenamingtoolFunctionsProvider) ValidateConfig(ctx context.Context
 	}
 
 	// Validate core components if provided
-	validateComponentIfProvided(config.DefaultResourceType, "default_resource_type")
-	validateComponentIfProvided(config.DefaultResourcePrefix, "default_resource_prefix")
-	validateComponentIfProvided(config.DefaultBasename, "default_basename")
-	validateComponentIfProvided(config.DefaultEnvironment, "default_environment")
-	validateComponentIfProvided(config.DefaultRegion, "default_region")
-	validateComponentIfProvided(config.DefaultInstance, "default_instance")
+	validateComponentIfProvided(configModel.DefaultResourceType, "default_resource_type")
+	validateComponentIfProvided(configModel.DefaultResourcePrefix, "default_resource_prefix")
+	validateComponentIfProvided(configModel.DefaultBasename, "default_basename")
+	validateComponentIfProvided(configModel.DefaultEnvironment, "default_environment")
+	validateComponentIfProvided(configModel.DefaultRegion, "default_region")
+	validateComponentIfProvided(configModel.DefaultInstance, "default_instance")
 
 	// Validate organization components if provided
-	validateComponentIfProvided(config.DefaultOrganization, "default_organization")
-	validateComponentIfProvided(config.DefaultBusinessUnit, "default_business_unit")
-	validateComponentIfProvided(config.DefaultCostCenter, "default_cost_center")
-	validateComponentIfProvided(config.DefaultProject, "default_project")
-	validateComponentIfProvided(config.DefaultApplication, "default_application")
-	validateComponentIfProvided(config.DefaultWorkload, "default_workload")
+	validateComponentIfProvided(configModel.DefaultOrganization, "default_organization")
+	validateComponentIfProvided(configModel.DefaultBusinessUnit, "default_business_unit")
+	validateComponentIfProvided(configModel.DefaultCostCenter, "default_cost_center")
+	validateComponentIfProvided(configModel.DefaultProject, "default_project")
+	validateComponentIfProvided(configModel.DefaultApplication, "default_application")
+	validateComponentIfProvided(configModel.DefaultWorkload, "default_workload")
 
 	// Validate provider specific components if provided
-	validateComponentIfProvided(config.DefaultSubscription, "default_subscription")
-	validateComponentIfProvided(config.DefaultLocation, "default_location")
-	validateComponentIfProvided(config.DefaultDomain, "default_domain")
-	validateComponentIfProvided(config.DefaultCriticality, "default_criticality")
+	validateComponentIfProvided(configModel.DefaultSubscription, "default_subscription")
+	validateComponentIfProvided(configModel.DefaultLocation, "default_location")
+	validateComponentIfProvided(configModel.DefaultDomain, "default_domain")
+	validateComponentIfProvided(configModel.DefaultCriticality, "default_criticality")
 
 	// Validate initiative/solution components if provided
-	validateComponentIfProvided(config.DefaultInitiative, "default_initiative")
-	validateComponentIfProvided(config.DefaultSolution, "default_solution")
+	validateComponentIfProvided(configModel.DefaultInitiative, "default_initiative")
+	validateComponentIfProvided(configModel.DefaultSolution, "default_solution")
 
 	if resp.Diagnostics.HasError() {
 		logError(ctx, "Validation errors detected, not saving configuration")
 		return
 	}
 
-	// Store the validated configuration in the provider struct
-	p.config = &config
-
 	// Save to file for cross-process sharing - this is the primary way functions will access the config
-	logDebug(ctx, "Saving configuration to file for cross-process sharing")
-	if err := saveProviderConfigToFile(ctx, &config); err != nil {
-		logErrorWithFields(ctx, "Failed to save configuration to file", map[string]interface{}{
-			"error": err.Error(),
-		})
+	err := saveProviderConfigToFile(ctx, &configModel, instanceID) // Corrected argument order
+	if err != nil {
 		resp.Diagnostics.AddError(
-			"Configuration Persistence Error",
-			fmt.Sprintf("Failed to save configuration to file: %s", err.Error()),
+			"Failed to Save Configuration",
+			fmt.Sprintf("Unable to save provider configuration for instance '%s': %s", instanceID, err.Error()),
 		)
+		// Depending on how critical this is, you might return early if saving fails
+		// For now, we'll log the error and continue, but p.config won't be set from a saved file if Configure runs.
 	} else {
-		logDebug(ctx, "Successfully saved configuration to file for cross-process sharing")
+		logDebug(ctx, "ValidateConfig: Successfully saved configuration to file for instance ID: '%s'", instanceID)
 	}
+
+	// Set p.config with the model from this ValidateConfig call.
+	// This makes ProviderInstanceID (and other config) available to Functions
+	// if Configure doesn't run before Functions are initialized.
+	// If Configure runs later, it will overwrite p.config with its (potentially more processed) version
+	// loaded from the file, which is fine.
+	p.config = &configModel
+	logDebug(ctx, "Provider ValidateConfig: Instance %p, Set p.config.ProviderInstanceID to: '%s'", p, p.config.ProviderInstanceID.ValueString())
+
+	// Note: No longer returning resp.ValidatedConfig because we are not modifying the config directly in this method for Terraform,
+	// but rather ensuring it's saved and p.config is set for internal use.
+	// The primary contract of ValidateConfig is to return diagnostics.
 }
 
 // ResourceNamingToolProvider is an alias for resourcenamingtoolFunctionsProvider
