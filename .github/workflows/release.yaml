@@ -10,12 +10,15 @@ on:
   workflow_call:
     inputs:
       new_release_git_tag:
+        description: Git tag to release (e.g. v1.2.3)
         required: true
         type: string
     secrets:
       GPG_PRIVATE_KEY:
+        description: GPG private key for signing release artifacts
         required: true
       GPG_PASSPHRASE:
+        description: Passphrase for the GPG private key
         required: true
 
 # Releases need permissions to read and write the repository contents.
@@ -49,7 +52,7 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          fingerprint: ${{ vars.GPG_FINGERPRINT }}
+          fingerprint: ${{ vars.GPG_FINGERPRINT }} # trunk-ignore(actionlint): vars context is valid at runtime
       - name: Create release package with GoReleaser
         uses: goreleaser/goreleaser-action@v6.3.0
         with:

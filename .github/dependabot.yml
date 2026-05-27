@@ -3,16 +3,16 @@
 version: 2
 updates:
   # Maintain dependencies for Go modules
-  - package-ecosystem: "gomod"
-    directory: "/"
+  - package-ecosystem: gomod
+    directory: /
     schedule:
       # Check for updates to Go modules every weekday
-      interval: "daily"
-  - package-ecosystem: "gomod"
-    directory: "/tools"
+      interval: daily
+  - package-ecosystem: gomod
+    directory: /tools
     schedule:
-      interval: "daily"
-  - package-ecosystem: "github-actions"
-    directory: "/"
+      interval: daily
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "daily"
+      interval: daily
