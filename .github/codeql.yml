@@ -1,4 +1,4 @@
-# Copyright (c) Thomas Geens
+# Copyright Thomas Geens 2025, 2026
 # SPDX-License-Identifier: MIT
 
 name: CodeQL
@@ -11,9 +11,9 @@ paths:
   - main.go
 
 paths-ignore:
-  - '**/vendor/**'
-  - '**/testdata/**'
-  - '**/*_test.go'
+  - "**/vendor/**"
+  - "**/testdata/**"
+  - "**/*_test.go"
 
 language:
   - go1.23.0
