@@ -25,7 +25,7 @@ var (
 	// - Azure: Following Microsoft's Cloud Adoption Framework (CAF) naming conventions
 	// - AWS: Following AWS Well-Architected Framework (WAF) and AWS service-specific naming guidelines
 	// - GCP: Following Google Cloud's recommended naming conventions
-	builtin_NamingPatterns = map[string]string{
+	builtinNamingPatterns = map[string]string{
 		// Azure RM Resources - Based on CAF naming conventions
 		// https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming
 		// // Azure Core Resources

@@ -535,7 +535,7 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 
 	// Create a consolidated map of naming patterns - start with built-in patterns
 	patternElements := make(map[string]attr.Value)
-	for key, value := range builtin_NamingPatterns {
+	for key, value := range builtinNamingPatterns {
 		patternElements[key] = types.StringValue(value)
 		logDebugWithFields(ctx, "Added built-in pattern", map[string]interface{}{
 			"key":   key,
