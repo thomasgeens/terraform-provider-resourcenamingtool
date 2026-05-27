@@ -324,44 +324,6 @@ func GetSharedProviderConfig(ctx context.Context, instanceID string) *resourcena
 	return nil
 }
 
-// SaveSharedProviderConfig saves the provider configuration to a file
-// This allows it to be shared between different process invocations
-func SaveSharedProviderConfig(ctx context.Context, config *resourcenamingtoolProviderModel, instanceID string) error {
-	// Use the provided context rather than creating a new one
-	logDebug(ctx, "SaveSharedProviderConfig: Starting save operation")
-
-	// Get the standard config path
-	configPath := getProviderConfigFilePath(ctx, instanceID)
-
-	logDebug(ctx, "SaveSharedProviderConfig: Saving to path: %s", configPath)
-
-	// Ensure the config directory exists before attempting to use a lock
-	if err := ensureConfigDirExists(configPath); err != nil {
-		logError(ctx, "SaveSharedProviderConfig: Error creating config directory: %s", err)
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	// Use in-memory mutex first (for same-process synchronization)
-	globalConfigMutex.Lock()
-	// Using helper function to unlock and log when the function returns
-	defer unlockMutexAndLog(globalConfigMutex, ctx, "SaveSharedProviderConfig")
-
-	// Create a file lock for cross-process synchronization
-	fileLock := flock.New(getLockFilePath(configPath))
-	locked, err := tryLockWithRetries(fileLock, fileLockTimeout, lockRetryInterval)
-	if err != nil {
-		logError(ctx, "SaveSharedProviderConfig: Error acquiring file lock: %s", err)
-		return fmt.Errorf("failed to acquire lock: %w", err)
-	}
-	if !locked {
-		logError(ctx, "SaveSharedProviderConfig: Could not acquire lock within timeout period (%s)", fileLockTimeout)
-		return fmt.Errorf("timeout acquiring lock")
-	}
-	// Using helper function to unlock and log when the function returns
-	defer unlockAndLog(fileLock, ctx, "SaveSharedProviderConfig")
-
-	return saveProviderConfigToFile(ctx, config, instanceID)
-}
 
 // saveProviderConfigToFile persists the provider configuration to a file
 // so it can be shared across different process invocations

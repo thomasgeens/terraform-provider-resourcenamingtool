@@ -12,8 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 //go:embed descriptions/generate_resource_name_description.txt
@@ -76,153 +74,6 @@ func (f *GenerateResourceNameFunction) Definition(ctx context.Context, req funct
 	})
 }
 
-// ComponentParameterType is a custom type for component parameters
-type ComponentParameterType struct {
-	basetypes.ObjectType
-}
-
-// NewComponentParameterType creates a new ComponentParameterType
-func NewComponentParameterType() ComponentParameterType {
-	return ComponentParameterType{}
-}
-
-// Equal returns true if the given type is equivalent
-func (t ComponentParameterType) Equal(o attr.Type) bool {
-	other, ok := o.(ComponentParameterType)
-	if !ok {
-		return false
-	}
-	return t.ObjectType.Equal(other.ObjectType)
-}
-
-// String returns a human-readable representation of the type
-func (t ComponentParameterType) String() string {
-	return "ComponentParameterType"
-}
-
-// TerraformType returns the tftypes.Type that should be used to represent this type
-func (t ComponentParameterType) TerraformType(ctx context.Context) tftypes.Type {
-	return tftypes.Object{
-		AttributeTypes: map[string]tftypes.Type{
-			"name":      tftypes.String,
-			"fullname":  tftypes.String,
-			"shortcode": tftypes.String,
-			"char":      tftypes.String,
-		},
-		OptionalAttributes: map[string]struct{}{
-			"fullname":  {},
-			"shortcode": {},
-			"char":      {},
-		},
-	}
-}
-
-// ValueFromTerraform transforms a tftypes.Value into the appropriate Go type
-func (t ComponentParameterType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
-	// Use basic logging to help with debugging
-	logDebugWithFields(ctx, "ComponentParameterType.ValueFromTerraform called", map[string]interface{}{
-		"value_type":   in.Type().String(),
-		"is_null":      in.IsNull(),
-		"is_known":     in.IsKnown(),
-		"debug_string": fmt.Sprintf("%#v", in),
-	})
-
-	// If the value is null or unknown, create a null or unknown value
-	if !in.IsKnown() {
-		logDebug(ctx, "Value is unknown, returning unknown object")
-		return basetypes.NewObjectUnknown(map[string]attr.Type{
-			"name":      types.StringType,
-			"fullname":  types.StringType,
-			"shortcode": types.StringType,
-			"char":      types.StringType,
-		}), nil
-	}
-
-	if in.IsNull() {
-		logDebug(ctx, "Value is null, returning null object")
-		return basetypes.NewObjectNull(map[string]attr.Type{
-			"name":      types.StringType,
-			"fullname":  types.StringType,
-			"shortcode": types.StringType,
-			"char":      types.StringType,
-		}), nil
-	}
-
-	// Extract the values from the tftypes.Value
-	var objMap map[string]tftypes.Value
-	err := in.As(&objMap)
-	if err != nil {
-		logErrorWithFields(ctx, "Error extracting values from tftypes.Value", map[string]interface{}{
-			"error": err.Error(),
-		})
-		return nil, err
-	}
-
-	// Create the attribute types and values
-	attrTypes := map[string]attr.Type{
-		"name":      types.StringType,
-		"fullname":  types.StringType,
-		"shortcode": types.StringType,
-		"char":      types.StringType,
-	}
-
-	attrs := map[string]attr.Value{
-		"name":      types.StringNull(),
-		"fullname":  types.StringNull(),
-		"shortcode": types.StringNull(),
-		"char":      types.StringNull(),
-	}
-
-	// Extract the name value
-	if nameVal, ok := objMap["name"]; ok && !nameVal.IsNull() && nameVal.IsKnown() {
-		var nameStr string
-		if err := nameVal.As(&nameStr); err == nil {
-			attrs["name"] = types.StringValue(nameStr)
-		}
-	}
-
-	// Extract the fullname value
-	if fullnameVal, ok := objMap["fullname"]; ok && !fullnameVal.IsNull() && fullnameVal.IsKnown() {
-		var fullnameStr string
-		if err := fullnameVal.As(&fullnameStr); err == nil {
-			attrs["fullname"] = types.StringValue(fullnameStr)
-		}
-	}
-
-	// Extract the shortcode value
-	if shortcodeVal, ok := objMap["shortcode"]; ok && !shortcodeVal.IsNull() && shortcodeVal.IsKnown() {
-		var shortcodeStr string
-		if err := shortcodeVal.As(&shortcodeStr); err == nil {
-			attrs["shortcode"] = types.StringValue(shortcodeStr)
-		}
-	}
-
-	// Extract the char value
-	if charVal, ok := objMap["char"]; ok && !charVal.IsNull() && charVal.IsKnown() {
-		var charStr string
-		if err := charVal.As(&charStr); err == nil {
-			attrs["char"] = types.StringValue(charStr)
-		}
-	}
-
-	// Create the object value
-	return types.ObjectValueMust(attrTypes, attrs), nil
-}
-
-// ValueType returns the value type for this type
-func (t ComponentParameterType) ValueType(ctx context.Context) attr.Value {
-	return ComponentParameterValue{}
-}
-
-// ComponentParameterValue is a custom value type for component parameters
-type ComponentParameterValue struct {
-	basetypes.ObjectValue
-}
-
-// Type returns the type of the value
-func (v ComponentParameterValue) Type(ctx context.Context) attr.Type {
-	return ComponentParameterType{}
-}
 
 func (f *GenerateResourceNameFunction) Run(ctx context.Context, req function.RunRequest, resp *function.RunResponse) {
 	instanceIDFromFConfig := "<f.config_is_nil_or_id_is_unknown>"
@@ -719,16 +570,6 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 			}
 		}
 
-		// Special handling for resource-specific pattern
-		if patternVal, exists := additionalPatterns.Elements()[resourceTypeFull]; exists {
-			if strVal, ok := patternVal.(types.String); ok && !strVal.IsNull() && !strVal.IsUnknown() {
-				patternElements[resourceTypeFull] = strVal
-				logDebugWithFields(ctx, "Added resource-specific pattern for current resource type", map[string]interface{}{
-					"resource_type": resourceTypeFull,
-					"pattern":       strVal.ValueString(),
-				})
-			}
-		}
 	} else if patternDiags.HasError() {
 		logErrorWithFields(ctx, "Error getting additional naming patterns", map[string]interface{}{
 			"error": patternDiags.Errors()[0].Summary(),
