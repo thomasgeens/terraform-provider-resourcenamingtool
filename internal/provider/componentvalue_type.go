@@ -1,4 +1,4 @@
-// Copyright (c) Thomas Geens
+// Copyright Thomas Geens 2025, 2026
 
 // Package provider implements the terraform provider resource naming tool functionality.
 package provider

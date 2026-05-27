@@ -50,14 +50,13 @@ on:
       - .copywrite.hcl # Copywrite configuration changes
       - LICENSE # License changes
 
-
 permissions:
   contents: write
   pull-requests: write
 
 env:
   # This environment variable is used to determine if the workflow is running in dry-run mode or not.
-  # We run in dry-run mode when the workflow is triggered manually with the input dry_run enabled, 
+  # We run in dry-run mode when the workflow is triggered manually with the input dry_run enabled,
   # or when the path is one of the following:
   #   - .github/workflows/semantic_versioning.yaml
   #   - .releaserc
@@ -106,7 +105,7 @@ jobs:
           semantic_version: 24.2.3
           dry_run: ${{ env.DRY_RUN }}
           unset_gha_env: ${{ github.event_name == 'pull_request' }}
-          ci: ${{ github.event_name == 'pull_request' && false || '' }}          
+          ci: ${{ github.event_name == 'pull_request' && false || '' }}
           # You can specify specifying version range for the extra plugins if you prefer.
           extra_plugins: |
             conventional-changelog-conventionalcommits

@@ -6,10 +6,10 @@ description: |-
   Resource Naming Tool Provider
   The Resource Naming Tool provider offers a flexible and standardized way to generate resource names across various cloud environments, including Azure, AWS, and GCP. It aligns with established best practices such as Microsoft's Cloud Adoption Framework (CAF), AWS Well-Architected Framework (WAF), and Google Cloud naming conventions.
   ~> Note: To ensure the provider configuration is properly loaded via Terraform's ValidateConfig RPC it is required to add the following initialization step within your Terraform code (e.g.,provider.tf)
-  
+
   # Required initialization step to ensure the provider configuration is loaded during the ValidateConfig RPC
   data "resourcenamingtool_status" "init" {}
-  
+
   Key Features
   Consistent Naming: Enforces uniform naming conventions across your infrastructure, reducing ambiguity and improving resource discoverability.Multi-Cloud Support: Comes with built-in, sensible default naming patterns tailored for popular services on Azure, AWS, and GCP.Customizable Defaults: Allows you to set default values for common naming components (e.g., default_environment, default_region, default_basename) at the provider level. This simplifies individual generate_resource_name function calls by pre-filling common values.Extensibility:
   additional_components: Define your own custom naming components (e.g., department, cost_center_short) to be used in naming patterns.additional_naming_patterns: Override or add new naming patterns for specific resource types to perfectly match your organization's standards.Simplified Configuration: Configure shared settings once at the provider level, and these settings will be available to all generate_resource_name function calls, promoting consistency and reducing boilerplate.
@@ -22,7 +22,8 @@ description: |-
 
 The **Resource Naming Tool** provider offers a flexible and standardized way to generate resource names across various cloud environments, including Azure, AWS, and GCP. It aligns with established best practices such as Microsoft's Cloud Adoption Framework (CAF), AWS Well-Architected Framework (WAF), and Google Cloud naming conventions.
 
-~> **Note:** To ensure the provider configuration is properly loaded via Terraform's ValidateConfig RPC it is required to add the following initialization step within your Terraform code (e.g.,`provider.tf`)  
+~> **Note:** To ensure the provider configuration is properly loaded via Terraform's ValidateConfig RPC it is required to add the following initialization step within your Terraform code (e.g.,`provider.tf`)
+
 ```terraform
 # Required initialization step to ensure the provider configuration is loaded during the ValidateConfig RPC
 data "resourcenamingtool_status" "init" {}
@@ -30,20 +31,20 @@ data "resourcenamingtool_status" "init" {}
 
 ## Key Features
 
-*   **Consistent Naming**: Enforces uniform naming conventions across your infrastructure, reducing ambiguity and improving resource discoverability.
-*   **Multi-Cloud Support**: Comes with built-in, sensible default naming patterns tailored for popular services on Azure, AWS, and GCP.
-*   **Customizable Defaults**: Allows you to set default values for common naming components (e.g., `default_environment`, `default_region`, `default_basename`) at the provider level. This simplifies individual `generate_resource_name` function calls by pre-filling common values.
-*   **Extensibility**:
-    *   `additional_components`: Define your own custom naming components (e.g., `department`, `cost_center_short`) to be used in naming patterns.
-    *   `additional_naming_patterns`: Override or add new naming patterns for specific resource types to perfectly match your organization's standards.
-*   **Simplified Configuration**: Configure shared settings once at the provider level, and these settings will be available to all `generate_resource_name` function calls, promoting consistency and reducing boilerplate.
+- **Consistent Naming**: Enforces uniform naming conventions across your infrastructure, reducing ambiguity and improving resource discoverability.
+- **Multi-Cloud Support**: Comes with built-in, sensible default naming patterns tailored for popular services on Azure, AWS, and GCP.
+- **Customizable Defaults**: Allows you to set default values for common naming components (e.g., `default_environment`, `default_region`, `default_basename`) at the provider level. This simplifies individual `generate_resource_name` function calls by pre-filling common values.
+- **Extensibility**:
+  - `additional_components`: Define your own custom naming components (e.g., `department`, `cost_center_short`) to be used in naming patterns.
+  - `additional_naming_patterns`: Override or add new naming patterns for specific resource types to perfectly match your organization's standards.
+- **Simplified Configuration**: Configure shared settings once at the provider level, and these settings will be available to all `generate_resource_name` function calls, promoting consistency and reducing boilerplate.
 
 This provider helps improve resource organization, simplifies management, and enhances clarity in complex cloud deployments by ensuring that all resources are named predictably and meaningfully. It is particularly useful in environments where maintaining a strict and understandable naming strategy is crucial for operational efficiency and governance.
 
 ## Example Usage
 
 ```terraform
-# Copyright (c) Thomas Geens
+# Copyright Thomas Geens 2025, 2026
 
 # Define requirements for the provider and Terraform version
 terraform {
@@ -287,6 +288,7 @@ data "resourcenamingtool_status" "init" {}
 ```
 
 <!-- schema generated by tfplugindocs -->
+
 ## Schema
 
 ### Optional
@@ -314,6 +316,7 @@ data "resourcenamingtool_status" "init" {}
 - `provider_instance_id` (String) A unique identifier for this provider instance. Used to avoid configuration file conflicts when using multiple provider instances in the same Terraform configuration.
 
 <a id="nestedatt--additional_components"></a>
+
 ### Nested Schema for `additional_components`
 
 Optional:
@@ -322,8 +325,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_application"></a>
+
 ### Nested Schema for `default_application`
 
 Optional:
@@ -332,8 +335,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_basename"></a>
+
 ### Nested Schema for `default_basename`
 
 Optional:
@@ -342,8 +345,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_business_unit"></a>
+
 ### Nested Schema for `default_business_unit`
 
 Optional:
@@ -352,8 +355,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_cost_center"></a>
+
 ### Nested Schema for `default_cost_center`
 
 Optional:
@@ -362,8 +365,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_criticality"></a>
+
 ### Nested Schema for `default_criticality`
 
 Optional:
@@ -372,8 +375,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_domain"></a>
+
 ### Nested Schema for `default_domain`
 
 Optional:
@@ -382,8 +385,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_environment"></a>
+
 ### Nested Schema for `default_environment`
 
 Optional:
@@ -392,8 +395,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_initiative"></a>
+
 ### Nested Schema for `default_initiative`
 
 Optional:
@@ -402,8 +405,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_instance"></a>
+
 ### Nested Schema for `default_instance`
 
 Optional:
@@ -412,8 +415,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_location"></a>
+
 ### Nested Schema for `default_location`
 
 Optional:
@@ -422,8 +425,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_organization"></a>
+
 ### Nested Schema for `default_organization`
 
 Optional:
@@ -432,8 +435,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_project"></a>
+
 ### Nested Schema for `default_project`
 
 Optional:
@@ -442,8 +445,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_region"></a>
+
 ### Nested Schema for `default_region`
 
 Optional:
@@ -452,8 +455,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_resource_prefix"></a>
+
 ### Nested Schema for `default_resource_prefix`
 
 Optional:
@@ -462,8 +465,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_resource_type"></a>
+
 ### Nested Schema for `default_resource_type`
 
 Optional:
@@ -472,8 +475,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_solution"></a>
+
 ### Nested Schema for `default_solution`
 
 Optional:
@@ -482,8 +485,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_subscription"></a>
+
 ### Nested Schema for `default_subscription`
 
 Optional:
@@ -492,8 +495,8 @@ Optional:
 - `fullname` (String)
 - `shortcode` (String)
 
-
 <a id="nestedatt--default_workload"></a>
+
 ### Nested Schema for `default_workload`
 
 Optional:

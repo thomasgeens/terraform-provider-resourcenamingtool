@@ -21,7 +21,7 @@ install: build update_terraformrc
 
 # Build the binary
 build: test testacc
-	@echo "Building the provider..."; \
+	@echo "Building the provider...";
 	go build -o $(BINARY_NAME) -v ./main.go
 
 # Update the ~/.terraformrc file using the script
