@@ -632,6 +632,7 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 		{"basename", []string{"{basename}", "{basename:full}", "{basename:short}", "{basename:char}"}, "full"},
 		{"environment", []string{"{environment}", "{environment:full}", "{environment:short}", "{environment:char}", "{env}", "{e}"}, "full"},
 		{"region", []string{"{region}", "{region:full}", "{region:short}", "{region:char}", "{location}", "{loc}", "{r}"}, "full"},
+		{"location", []string{"{location:full}", "{location:short}", "{location:char}"}, "full"},
 		{"instance", []string{"{instance}", "{instance:full}", "{instance:short}", "{instance:char}", "{inst}", "{i}"}, "full"},
 
 		// Organization components
@@ -743,6 +744,8 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 						defaultValue, localDiag = config.DefaultEnvironment.GetFullname(ctx)
 					case "region":
 						defaultValue, localDiag = config.DefaultRegion.GetFullname(ctx)
+					case "location":
+						defaultValue, localDiag = config.DefaultLocation.GetFullname(ctx)
 					case "instance":
 						defaultValue, localDiag = config.DefaultInstance.GetFullname(ctx)
 					case "organization":
@@ -809,6 +812,10 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 						case "region":
 							if !config.DefaultRegion.IsNull() {
 								value, _ = config.DefaultRegion.GetShortcode(ctx)
+							}
+						case "location":
+							if !config.DefaultLocation.IsNull() {
+								value, _ = config.DefaultLocation.GetShortcode(ctx)
 							}
 						case "instance":
 							if !config.DefaultInstance.IsNull() {
@@ -893,6 +900,10 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 							if !config.DefaultRegion.IsNull() {
 								value, _ = config.DefaultRegion.GetChar(ctx)
 							}
+						case "location":
+							if !config.DefaultLocation.IsNull() {
+								value, _ = config.DefaultLocation.GetChar(ctx)
+							}
 						case "instance":
 							if !config.DefaultInstance.IsNull() {
 								value, _ = config.DefaultInstance.GetChar(ctx)
@@ -963,6 +974,31 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 						"component":   compType.Name,
 						"placeholder": placeholder,
 					})
+				}
+			}
+		}
+	}
+
+	// Apply provider-level additional_components as baseline placeholders.
+	// Function-level additional_components (processed below) override these.
+	if !config.AdditionalComponents.IsNull() && !config.AdditionalComponents.IsUnknown() {
+		for key, val := range config.AdditionalComponents.Elements() {
+			// Keys are {wrapped} — strip braces to get the component name
+			componentName := strings.TrimSuffix(strings.TrimPrefix(key, "{"), "}")
+			if compObj, ok := val.(ComponentValueObject); ok && !compObj.IsNull() && !compObj.IsUnknown() {
+				if fullname, _ := compObj.GetFullname(ctx); fullname != "" {
+					placeholders["{"+componentName+"}"] = fullname
+					placeholders["{"+componentName+":full}"] = fullname
+					logDebugWithFields(ctx, "Applied provider-level additional component placeholder", map[string]interface{}{
+						"placeholder": "{" + componentName + "}",
+						"value":       fullname,
+					})
+				}
+				if shortcode, _ := compObj.GetShortcode(ctx); shortcode != "" {
+					placeholders["{"+componentName+":short}"] = shortcode
+				}
+				if char, _ := compObj.GetChar(ctx); char != "" {
+					placeholders["{"+componentName+":char}"] = char
 				}
 			}
 		}
@@ -1086,14 +1122,6 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 	if result == "" {
 		logError(ctx, "Generated resource name is empty")
 		diags.AddError("Empty Name", "Resource name cannot be empty")
-		return "", diags
-	}
-	if len(result) > 90 {
-		logErrorWithFields(ctx, "Generated resource name is too long", map[string]interface{}{
-			"length": len(result),
-			"result": result,
-		})
-		diags.AddError("Name Too Long", fmt.Sprintf("Resource name exceeds 90 characters: %s", result))
 		return "", diags
 	}
 	if len(result) < 3 {
