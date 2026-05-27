@@ -62,6 +62,16 @@ repos:
       - id: go-mod-tidy
   - repo: local
     hooks:
+      - id: docs-generate-check
+        name: Check generated docs are up to date
+        description: Runs make generate and fails if docs/ changed. Run 'make generate && git add docs/ && git commit --amend' to fix.
+        entry: >-
+          bash -c
+          "make generate && git diff --exit-code docs/ ||
+          (echo 'Docs out of sync. Run: make generate && git add docs/ && git commit --amend' && exit 1)"
+        language: system
+        pass_filenames: false
+        files: ^(examples/|internal/provider/descriptions/|internal/provider/.*\.go|main\.go)
       - id: go-sec
         name: GoSec
         description: Run GoSec security analysis
