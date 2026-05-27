@@ -1,4 +1,4 @@
-// Copyright (c) Thomas Geens
+// Copyright Thomas Geens 2025, 2026
 
 package provider
 
@@ -18,10 +18,9 @@ import (
 
 // Global variables for the provider
 var (
-	providerSuffixPath = ".terraform/providers/registry.terraform.io/thomasgeens/resourcenamingtool"
-	fileLockTimeout    = 10 * time.Second
-	lockRetryInterval  = 50 * time.Millisecond
-	globalConfigMutex  = &sync.Mutex{} // Memory-level lock for in-process synchronization
+	fileLockTimeout   = 10 * time.Second
+	lockRetryInterval = 50 * time.Millisecond
+	globalConfigMutex = &sync.Mutex{} // Memory-level lock for in-process synchronization
 	// Define builtin default naming patterns following cloud provider best practices:
 	// - Azure: Following Microsoft's Cloud Adoption Framework (CAF) naming conventions
 	// - AWS: Following AWS Well-Architected Framework (WAF) and AWS service-specific naming guidelines
@@ -230,21 +229,40 @@ func processComponentFromMap(ctx context.Context, componentMap map[string]interf
 	return componentValue, !diags.HasError()
 }
 
-// getConfigPath returns the standard configuration file path
-// This ensures consistent path resolution across all functions
-func getConfigPath(ctx context.Context) string {
-	logDebug(ctx, "Invoking getConfigPath")
-	workDir, err := os.Getwd()
-	configDir := ""
-	if err != nil {
-		logDebug(ctx, "getConfigPath: Failed to get working directory path, default to temp directory path: %s", err)
-		configDir = filepath.Join(os.TempDir(), providerSuffixPath)
-	} else {
-		logDebug(ctx, "getConfigPath: Working directory path: %s", workDir)
-		configDir = filepath.Join(workDir, providerSuffixPath)
+// getProviderConfigDir returns the base directory for provider configuration files.
+// Priority: TF_DATA_DIR (absolute, workspace-scoped, Terraform-managed) →
+//
+//	os.Getwd()+"/.terraform" (CWD-relative, may be unreliable in function RPCs) →
+//	os.TempDir() (global fallback, risk of cross-workspace collision).
+func getProviderConfigDir(ctx context.Context) string {
+	logDebug(ctx, "Invoking getProviderConfigDir")
+	if dataDir := os.Getenv("TF_DATA_DIR"); dataDir != "" {
+		configDir := filepath.Join(dataDir, "resourcenamingtool_cache")
+		logDebug(ctx, "getProviderConfigDir: Using TF_DATA_DIR: %s", configDir)
+		return configDir
 	}
-	logDebug(ctx, "getConfigPath: Config directory path: %s", configDir)
-	return filepath.Join(configDir, "provider-config.json")
+	if wd, err := os.Getwd(); err == nil {
+		configDir := filepath.Join(wd, ".terraform", "resourcenamingtool_cache")
+		logDebug(ctx, "getProviderConfigDir: Using CWD/.terraform: %s", configDir)
+		return configDir
+	}
+	configDir := filepath.Join(os.TempDir(), "resourcenamingtool_cache")
+	logDebug(ctx, "getProviderConfigDir: Using TempDir fallback: %s", configDir)
+	return configDir
+}
+
+// getProviderConfigFilePath returns the specific configuration file path for a given instance ID.
+func getProviderConfigFilePath(ctx context.Context, instanceID string) string {
+	configDir := getProviderConfigDir(ctx)
+	filename := "resourcenamingtool_config_default.json"
+	if instanceID != "" {
+		// Basic sanitization could be added here if instanceID can contain problematic characters
+		// for filenames, though Terraform aliases are somewhat restricted.
+		filename = fmt.Sprintf("resourcenamingtool_config_%s.json", instanceID)
+	} else {
+		logWarn(ctx, "Provider 'provider_instance_id' is not set or is empty. Using default configuration file 'resourcenamingtool_config_default.json'. This may lead to conflicts if multiple instances of the provider are configured without unique 'provider_instance_id' values.")
+	}
+	return filepath.Join(configDir, filename)
 }
 
 // ensureConfigDirExists ensures the configuration directory exists
@@ -261,14 +279,14 @@ func getLockFilePath(configPath string) string {
 
 // GetSharedProviderConfig retrieves the provider configuration from the file
 // This allows functions to access the provider configuration between different process invocations
-func GetSharedProviderConfig(ctx context.Context) *resourcenamingtoolProviderModel {
+func GetSharedProviderConfig(ctx context.Context, instanceID string) *resourcenamingtoolProviderModel {
 	// Use the provided context rather than creating a new one
-	logDebug(ctx, "GetSharedProviderConfig: Starting configuration retrieval")
+	logDebug(ctx, "GetSharedProviderConfig: Starting configuration retrieval for instance ID: '%s'", instanceID)
 
-	// Get the standard config path
-	configPath := getConfigPath(ctx)
+	// Get the config path for the given instance ID
+	configPath := getProviderConfigFilePath(ctx, instanceID)
 
-	logDebug(ctx, "GetSharedProviderConfig: Checking file path: %s", configPath)
+	logDebug(ctx, "GetSharedProviderConfig: Checking file path: %s for instance ID: '%s'", configPath, instanceID)
 
 	// Ensure the config directory exists before attempting to acquire a lock
 	if err := ensureConfigDirExists(configPath); err != nil {
@@ -295,25 +313,25 @@ func GetSharedProviderConfig(ctx context.Context) *resourcenamingtoolProviderMod
 	// Using helper function to unlock and log when the function returns
 	defer unlockAndLog(fileLock, ctx, "GetSharedProviderConfig")
 
-	fileConfig := loadProviderConfigFromFile(ctx)
+	fileConfig := loadProviderConfigFromFile(ctx, instanceID) // Pass instanceID here
 
 	if fileConfig != nil {
-		logDebug(ctx, "GetSharedProviderConfig: Successfully loaded config from file")
+		logDebug(ctx, "GetSharedProviderConfig: Successfully loaded config from file for instance ID: '%s'", instanceID)
 		return fileConfig
 	}
 
-	logDebug(ctx, "GetSharedProviderConfig: No shared provider configuration found")
+	logDebug(ctx, "GetSharedProviderConfig: No shared provider configuration found for instance ID: '%s'", instanceID)
 	return nil
 }
 
 // SaveSharedProviderConfig saves the provider configuration to a file
 // This allows it to be shared between different process invocations
-func SaveSharedProviderConfig(ctx context.Context, config *resourcenamingtoolProviderModel) error {
+func SaveSharedProviderConfig(ctx context.Context, config *resourcenamingtoolProviderModel, instanceID string) error {
 	// Use the provided context rather than creating a new one
 	logDebug(ctx, "SaveSharedProviderConfig: Starting save operation")
 
 	// Get the standard config path
-	configPath := getConfigPath(ctx)
+	configPath := getProviderConfigFilePath(ctx, instanceID)
 
 	logDebug(ctx, "SaveSharedProviderConfig: Saving to path: %s", configPath)
 
@@ -342,22 +360,16 @@ func SaveSharedProviderConfig(ctx context.Context, config *resourcenamingtoolPro
 	// Using helper function to unlock and log when the function returns
 	defer unlockAndLog(fileLock, ctx, "SaveSharedProviderConfig")
 
-	return saveProviderConfigToFile(ctx, config)
+	return saveProviderConfigToFile(ctx, config, instanceID)
 }
 
 // saveProviderConfigToFile persists the provider configuration to a file
 // so it can be shared across different process invocations
-func saveProviderConfigToFile(ctx context.Context, config *resourcenamingtoolProviderModel) error {
-	logDebug(ctx, "Invoking saveProviderConfigToFile")
+func saveProviderConfigToFile(ctx context.Context, config *resourcenamingtoolProviderModel, instanceID string) error {
+	logDebug(ctx, "saveProviderConfigToFile: Starting configuration save for instance ID: '%s'", instanceID)
 
-	if config == nil {
-		logError(ctx, "cannot save nil configuration")
-		return fmt.Errorf("cannot save nil configuration")
-	}
-
-	// Get the standard config path
-	configPath := getConfigPath(ctx)
-	tempDir := filepath.Dir(configPath)
+	configPath := getProviderConfigFilePath(ctx, instanceID)
+	logDebug(ctx, "saveProviderConfigToFile: Determined config file path: %s for instance ID: '%s'", configPath, instanceID)
 
 	// Ensure the config directory exists before attempting to acquire a lock
 	if err := ensureConfigDirExists(configPath); err != nil {
@@ -385,7 +397,7 @@ func saveProviderConfigToFile(ctx context.Context, config *resourcenamingtoolPro
 	defer unlockAndLog(fileLock, ctx, "saveProviderConfigToFile")
 
 	logDebug(ctx, "Attempting to save provider config to: %s", configPath)
-	logDebug(ctx, "Configuration directory path: %s", tempDir)
+	logDebug(ctx, "Configuration directory path: %s", filepath.Dir(configPath))
 
 	// Marshal the configuration to JSON using the struct tags
 	configJson, err := json.MarshalIndent(config, "", "  ")
@@ -424,12 +436,11 @@ func saveProviderConfigToFile(ctx context.Context, config *resourcenamingtoolPro
 
 // loadProviderConfigFromFile loads the provider configuration from a file
 // allowing it to be shared across different process invocations
-func loadProviderConfigFromFile(ctx context.Context) *resourcenamingtoolProviderModel {
-	logDebug(ctx, "Invoking loadProviderConfigFromFile")
+func loadProviderConfigFromFile(ctx context.Context, instanceID string) *resourcenamingtoolProviderModel {
+	logDebug(ctx, "loadProviderConfigFromFile: Starting configuration load for instance ID: '%s'", instanceID)
 
-	// Get the standard config path
-	configPath := getConfigPath(ctx)
-	logDebug(ctx, "Attempting to load provider config from: %s", configPath)
+	configPath := getProviderConfigFilePath(ctx, instanceID)
+	logDebug(ctx, "loadProviderConfigFromFile: Determined config file path: %s for instance ID: '%s'", configPath, instanceID)
 
 	// Check if the file exists
 	if fileInfo, err := os.Stat(configPath); os.IsNotExist(err) {

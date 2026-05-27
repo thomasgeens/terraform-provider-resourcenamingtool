@@ -1,4 +1,4 @@
-// Copyright (c) Thomas Geens
+// Copyright Thomas Geens 2025, 2026
 
 package provider
 
@@ -29,10 +29,18 @@ type GenerateResourceNameFunction struct {
 }
 
 // NewGenerateResourceNameFunction creates a new instance with the provider config
-func NewGenerateResourceNameFunction(config *resourcenamingtoolProviderModel) function.Function {
-	return &GenerateResourceNameFunction{
+func NewGenerateResourceNameFunction(ctx context.Context, config *resourcenamingtoolProviderModel) function.Function { // Added ctx
+	f := &GenerateResourceNameFunction{
 		config: config, // Store the pointer directly, don't dereference
 	}
+
+	instanceIDFromConfig := "<uninitialized>"
+	if f.config != nil && !f.config.ProviderInstanceID.IsNull() && !f.config.ProviderInstanceID.IsUnknown() {
+		instanceIDFromConfig = f.config.ProviderInstanceID.ValueString()
+	}
+	logDebug(ctx, "GenerateResourceNameFunction New: Function Instance %p, Initialized with ProviderInstanceID from constructor: '%s'", f, instanceIDFromConfig)
+
+	return f
 }
 
 func (f *GenerateResourceNameFunction) Metadata(ctx context.Context, req function.MetadataRequest, resp *function.MetadataResponse) {
@@ -217,6 +225,12 @@ func (v ComponentParameterValue) Type(ctx context.Context) attr.Type {
 }
 
 func (f *GenerateResourceNameFunction) Run(ctx context.Context, req function.RunRequest, resp *function.RunResponse) {
+	instanceIDFromFConfig := "<f.config_is_nil_or_id_is_unknown>"
+	if f.config != nil && !f.config.ProviderInstanceID.IsNull() && !f.config.ProviderInstanceID.IsUnknown() {
+		instanceIDFromFConfig = f.config.ProviderInstanceID.ValueString()
+	}
+	logDebug(ctx, "GenerateResourceNameFunction Run: Function Instance %p, ProviderInstanceID from f.config: '%s'", f, instanceIDFromFConfig)
+
 	logDebug(ctx, "Invoking GenerateResourceNameFunction...")
 
 	// Parse the incoming parameters as a set
@@ -250,85 +264,24 @@ func (f *GenerateResourceNameFunction) Run(ctx context.Context, req function.Run
 		})
 	}
 
-	// Get configuration - use the shared provider config, potentially loading from file
+	// Get configuration.
+	// Primary: f.config (in-memory, set by ValidateConfig in same process — no file I/O).
+	// Fallback: file (cross-process or function evaluated before ValidateConfig runs).
+	// Last resort: empty defaults (caller must supply all parameters explicitly).
 	var config *resourcenamingtoolProviderModel
-
-	// Try to get the shared provider configuration, which will now check both the
-	// in-memory atomic variable and the file-based storage
-	sharedConfig := GetSharedProviderConfig(ctx)
-	// Show sharedConfig in debug
-	logDebugWithFields(ctx, "Shared provider configuration", map[string]interface{}{
-		"config": sharedConfig,
-	})
-	if sharedConfig != nil {
-		// Create a deep copy to avoid modifying the shared config
-		config = &resourcenamingtoolProviderModel{}
-		*config = *sharedConfig
-		logDebug(ctx, "Using shared provider configuration")
-	} else {
-		// No shared config available, create a safe empty config to avoid nil pointer dereference
-		logDebug(ctx, "No shared provider configuration found, creating empty config")
-		config = &resourcenamingtoolProviderModel{}
-	}
-
-	// If function has a local config, use it to override specific values
 	if f.config != nil {
-		logDebug(ctx, "Found function-specific configuration")
-
-		// Only override values that are not null in the local config
-		if !f.config.DefaultResourceType.IsNull() {
-			config.DefaultResourceType = f.config.DefaultResourceType
-		}
-		if !f.config.DefaultResourcePrefix.IsNull() {
-			config.DefaultResourcePrefix = f.config.DefaultResourcePrefix
-		}
-		if !f.config.DefaultBasename.IsNull() {
-			config.DefaultBasename = f.config.DefaultBasename
-		}
-		if !f.config.DefaultEnvironment.IsNull() {
-			config.DefaultEnvironment = f.config.DefaultEnvironment
-		}
-		if !f.config.DefaultRegion.IsNull() {
-			config.DefaultRegion = f.config.DefaultRegion
-		}
-		if !f.config.DefaultInstance.IsNull() {
-			config.DefaultInstance = f.config.DefaultInstance
-		}
-		if !f.config.DefaultOrganization.IsNull() {
-			config.DefaultOrganization = f.config.DefaultOrganization
-		}
-		if !f.config.DefaultProject.IsNull() {
-			config.DefaultProject = f.config.DefaultProject
-		}
-		if !f.config.DefaultBusinessUnit.IsNull() {
-			config.DefaultBusinessUnit = f.config.DefaultBusinessUnit
-		}
-		if !f.config.DefaultCostCenter.IsNull() {
-			config.DefaultCostCenter = f.config.DefaultCostCenter
-		}
-		if !f.config.DefaultApplication.IsNull() {
-			config.DefaultApplication = f.config.DefaultApplication
-		}
-		if !f.config.DefaultWorkload.IsNull() {
-			config.DefaultWorkload = f.config.DefaultWorkload
-		}
-		if !f.config.DefaultSubscription.IsNull() {
-			config.DefaultSubscription = f.config.DefaultSubscription
-		}
-		if !f.config.DefaultLocation.IsNull() {
-			config.DefaultLocation = f.config.DefaultLocation
-		}
-		if !f.config.DefaultDomain.IsNull() {
-			config.DefaultDomain = f.config.DefaultDomain
-		}
-		if !f.config.DefaultCriticality.IsNull() {
-			config.DefaultCriticality = f.config.DefaultCriticality
-		}
-		if !f.config.DefaultInitiative.IsNull() {
-			config.DefaultInitiative = f.config.DefaultInitiative
-		}
-		if !f.config.DefaultSolution.IsNull() {
-			config.DefaultSolution = f.config.DefaultSolution
+		configCopy := *f.config
+		config = &configCopy
+		logDebug(ctx, "Run: Using in-memory provider config (f.config)")
+	} else {
+		logDebug(ctx, "Run: f.config nil, attempting file-based shared config")
+		sharedConfig := GetSharedProviderConfig(ctx, "")
+		if sharedConfig != nil {
+			config = sharedConfig
+			logDebug(ctx, "Run: Using shared provider config from file")
+		} else {
+			logDebug(ctx, "Run: No config available, using empty defaults")
+			config = &resourcenamingtoolProviderModel{}
 		}
 	}
 
