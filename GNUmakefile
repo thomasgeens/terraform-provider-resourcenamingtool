@@ -16,7 +16,7 @@ verify: install
 install: build update_terraformrc
 	@echo "Installing the provider..."
 	@mkdir -p $(GOBIN)
-	@cp $(BINARY_NAME) $(GOBIN)/$(BINARY_NAME)
+	@install -m 755 $(BINARY_NAME) $(GOBIN)/$(BINARY_NAME)
 	@echo "Provider installed to $(GOBIN)/$(BINARY_NAME)"
 
 # Build the binary
