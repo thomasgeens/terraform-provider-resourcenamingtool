@@ -324,7 +324,6 @@ func GetSharedProviderConfig(ctx context.Context, instanceID string) *resourcena
 	return nil
 }
 
-
 // saveProviderConfigToFile persists the provider configuration to a file
 // so it can be shared across different process invocations
 func saveProviderConfigToFile(ctx context.Context, config *resourcenamingtoolProviderModel, instanceID string) error {
@@ -392,6 +391,19 @@ func saveProviderConfigToFile(ctx context.Context, config *resourcenamingtoolPro
 		logError(ctx, "Failed to verify file was written: %s", err.Error())
 	}
 
+	// When a non-default instance ID is in use, also write _default.json so that
+	// early function calls (evaluated before ValidateConfig sets p.config) can still
+	// find a config via the file fallback. In a multi-instance setup the last writer
+	// wins, which is the same behaviour as the previous TempDir approach.
+	if instanceID != "" {
+		defaultPath := filepath.Join(filepath.Dir(configPath), "resourcenamingtool_config_default.json")
+		if err := os.WriteFile(defaultPath, configJson, 0600); err != nil {
+			logWarn(ctx, "saveProviderConfigToFile: Failed to write default fallback config: %s", err.Error())
+		} else {
+			logDebug(ctx, "saveProviderConfigToFile: Wrote default fallback config to: %s", defaultPath)
+		}
+	}
+
 	logDebug(ctx, "Successfully wrote configuration to file: %s", configPath)
 	return nil
 }
@@ -433,25 +445,50 @@ func loadProviderConfigFromFile(ctx context.Context, instanceID string) *resourc
 	logDebug(ctx, "Read configuration JSON from file (length=%d): %s",
 		len(configJson), jsonPreview)
 
-	// Unmarshal the JSON directly to the provider model using the struct tags
-	config := &resourcenamingtoolProviderModel{}
-	if err := json.Unmarshal(configJson, config); err != nil {
-		logError(ctx, "Failed to unmarshal configuration from JSON: %s", err.Error())
-		return nil
-	}
-
-	logDebug(ctx, "Successfully unmarshaled provider config using JSON struct tags")
-
-	// Handle the AdditionalComponents and AdditionalNamingPatterns maps specially
-	// since they require additional conversion
-	logDebug(ctx, "Converting maps from JSON representation to internal types...")
-
-	// Parse the JSON into a map to extract AdditionalComponents and AdditionalNamingPatterns
+	// Unmarshal into a plain map — terraform-plugin-framework types (types.String,
+	// ComponentValueObject) cannot be deserialized by the standard JSON package.
 	var rawConfig map[string]interface{}
 	if err := json.Unmarshal(configJson, &rawConfig); err != nil {
 		logError(ctx, "Failed to parse raw config: %s", err.Error())
 		return nil
 	}
+
+	config := &resourcenamingtoolProviderModel{}
+
+	// Extract provider_instance_id (plain string in JSON)
+	if pid, ok := rawConfig["provider_instance_id"].(string); ok {
+		config.ProviderInstanceID = types.StringValue(pid)
+	}
+
+	// Extract all Default* component fields from the map representation
+	extractComponent := func(key string) ComponentValueObject {
+		if v, ok := rawConfig[key].(map[string]interface{}); ok {
+			if comp, ok := processComponentFromMap(ctx, v); ok {
+				return comp
+			}
+		}
+		return ComponentValueObject{}
+	}
+	config.DefaultResourceType = extractComponent("DefaultResourceType")
+	config.DefaultResourcePrefix = extractComponent("DefaultResourcePrefix")
+	config.DefaultBasename = extractComponent("DefaultBasename")
+	config.DefaultEnvironment = extractComponent("DefaultEnvironment")
+	config.DefaultRegion = extractComponent("DefaultRegion")
+	config.DefaultInstance = extractComponent("DefaultInstance")
+	config.DefaultOrganization = extractComponent("DefaultOrganization")
+	config.DefaultBusinessUnit = extractComponent("DefaultBusinessUnit")
+	config.DefaultCostCenter = extractComponent("DefaultCostCenter")
+	config.DefaultProject = extractComponent("DefaultProject")
+	config.DefaultApplication = extractComponent("DefaultApplication")
+	config.DefaultWorkload = extractComponent("DefaultWorkload")
+	config.DefaultSubscription = extractComponent("DefaultSubscription")
+	config.DefaultLocation = extractComponent("DefaultLocation")
+	config.DefaultDomain = extractComponent("DefaultDomain")
+	config.DefaultCriticality = extractComponent("DefaultCriticality")
+	config.DefaultInitiative = extractComponent("DefaultInitiative")
+	config.DefaultSolution = extractComponent("DefaultSolution")
+
+	logDebug(ctx, "Successfully loaded component fields from raw config")
 
 	// Handle AdditionalComponents
 	if components, ok := rawConfig["AdditionalComponents"].(map[string]interface{}); ok && len(components) > 0 {
