@@ -31,11 +31,11 @@ TF_ACC=1 go test ./internal/provider -run=TestAccProviderStatusDataSource -v
 
 ### Provider lifecycle
 
-`ValidateConfig` → `Configure` → `Functions()` — Terraform call order. Key design: `ValidateConfig` and function `Run` execute in the **same process**; `f.config` (set during `Functions()`) is the primary config source — no file I/O on the normal path. File-based fallback (`GetSharedProviderConfig`) is used only when `f.config` is nil (e.g. function evaluated before `ValidateConfig` runs). Config files stored in `$TF_DATA_DIR/resourcenamingtool_cache/` → `{cwd}/.terraform/resourcenamingtool_cache/` → `os.TempDir()/resourcenamingtool_cache/` (fallback chain).
+`ValidateConfig` → `Configure` → `Functions()` — Terraform call order. Key design: `ValidateConfig` and function `Run` execute in the **same process**; `f.provider.config` (lazily read in `Run` via the `*resourcenamingtoolFunctionsProvider` pointer stored during `Functions()`) is the primary config source — no file I/O on the normal path. File-based fallback (`GetSharedProviderConfig`) is used only when `f.provider.config` is nil (e.g. function evaluated before `ValidateConfig` runs). Config files stored in `$TF_DATA_DIR/resourcenamingtool_cache/` → `{cwd}/.terraform/resourcenamingtool_cache/` → `os.TempDir()/resourcenamingtool_cache/` (fallback chain).
 
-- `provider.go` — provider registration, schema, `ValidateConfig` (saves config to file), `Configure` (loads config from file into `p.config`), `Functions()` (wires `p.config` into function instance as `f.config`).
-- `config_manager.go` — file I/O: `saveProviderConfigToFile` / `loadProviderConfigFromFile`. Uses `sync.Mutex` for in-process safety and `github.com/gofrs/flock` for cross-process file locking. Config files named `resourcenamingtool_config_{instanceID}.json` (or `_default.json` when `provider_instance_id` unset).
-- `zz_generate_resource_name_function.go` — `generate_resource_name` function. `Run` uses `f.config` (in-memory) as primary; falls back to file only if `f.config` nil. Merges provider-level defaults with call-time parameters, applies naming pattern, returns generated string.
+- `provider.go` — provider registration, schema, `ValidateConfig` (saves config to file), `Configure` (loads config from file into `p.config`), `Functions()` (stores provider pointer into function instance as `f.provider`; config read lazily via `f.provider.config` in `Run`).
+- `config_manager.go` — file I/O: `saveProviderConfigToFile` / `loadProviderConfigFromFile`. Uses `sync.Mutex` for in-process safety and `github.com/gofrs/flock` for cross-process file locking. Config files named `resourcenamingtool_config_{instanceID}.json` (or `_default.json` when `provider_instance_id` unset). `instanceID` is sanitized to `[a-zA-Z0-9_-]` before use as a filename component.
+- `zz_generate_resource_name_function.go` — `generate_resource_name` function. `Run` uses `f.provider.config` (in-memory) as primary; falls back to file only if nil. Merges provider-level defaults with call-time parameters, applies naming pattern, returns generated string.
 - `componentvalue_type.go` — `ComponentValueType` / `ComponentValueObject`: custom Terraform attribute type for naming component with three representations: `fullname`, `shortcode`, `char`. Used for every `default_*` provider attribute and function parameters.
 - `resourcenamingparameters_type.go` — `ResourceNamingParametersType`: custom object type for function's `parameters` argument; mirrors all provider-level component fields plus `additional_components` and `additional_naming_patterns`.
 - `provider_status_datasource.go` — read-only data source exposing provider config state for debugging.
@@ -43,7 +43,7 @@ TF_ACC=1 go test ./internal/provider -run=TestAccProviderStatusDataSource -v
 
 ### Naming pattern resolution
 
-Patterns use `{component_name}` placeholders. `:short` and `:char` suffixes (e.g. `{environment:short}`, `{region:char}`) select `shortcode` or `char` representation of component. Resolved in `zz_generate_resource_name_function.go`. Built-in cloud patterns defined (currently commented out) in `config_manager.go` under `builtin_NamingPatterns`. Custom patterns injectable via `additional_naming_patterns`.
+Patterns use `{component_name}` placeholders. `:short` and `:char` suffixes (e.g. `{environment:short}`, `{region:char}`) select `shortcode` or `char` representation of component. Resolved in `zz_generate_resource_name_function.go`. Built-in cloud patterns defined (currently commented out) in `config_manager.go` under `builtinNamingPatterns`. Custom patterns injectable via `additional_naming_patterns`. Note: `{location}` routes to the `location` component (`DefaultLocation`); `{region}` routes to `region` (`DefaultRegion`) — they are distinct.
 
 ### Multi-instance support
 
