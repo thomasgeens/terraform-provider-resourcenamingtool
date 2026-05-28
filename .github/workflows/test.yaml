@@ -87,6 +87,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_wrapper: false
       - run: make generate
       - name: git diff
         run: |
