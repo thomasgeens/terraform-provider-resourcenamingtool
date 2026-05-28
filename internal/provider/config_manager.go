@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"time"
 
@@ -15,6 +16,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// safeInstanceIDChars rejects anything that could traverse directories or
+// produce unexpected filenames. Only alphanumerics, hyphens, and underscores
+// are allowed — the same characters Terraform accepts for provider aliases.
+var safeInstanceIDChars = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+
+// sanitizeInstanceID replaces any character outside the safe set with "_" so
+// that the value can be used as a filename component without path-traversal risk.
+func sanitizeInstanceID(id string) string {
+	return safeInstanceIDChars.ReplaceAllString(id, "_")
+}
 
 // Global variables for the provider
 var (
@@ -256,9 +268,8 @@ func getProviderConfigFilePath(ctx context.Context, instanceID string) string {
 	configDir := getProviderConfigDir(ctx)
 	filename := "resourcenamingtool_config_default.json"
 	if instanceID != "" {
-		// Basic sanitization could be added here if instanceID can contain problematic characters
-		// for filenames, though Terraform aliases are somewhat restricted.
-		filename = fmt.Sprintf("resourcenamingtool_config_%s.json", instanceID)
+		safe := sanitizeInstanceID(instanceID)
+		filename = fmt.Sprintf("resourcenamingtool_config_%s.json", safe)
 	} else {
 		logWarn(ctx, "Provider 'provider_instance_id' is not set or is empty. Using default configuration file 'resourcenamingtool_config_default.json'. This may lead to conflicts if multiple instances of the provider are configured without unique 'provider_instance_id' values.")
 	}
@@ -395,10 +406,17 @@ func saveProviderConfigToFile(ctx context.Context, config *resourcenamingtoolPro
 	// early function calls (evaluated before ValidateConfig sets p.config) can still
 	// find a config via the file fallback. In a multi-instance setup the last writer
 	// wins, which is the same behaviour as the previous TempDir approach.
+	// Write via a temp file + rename so readers always see a complete file
+	// (atomic on POSIX; best-effort on Windows where Rename may fail if the target
+	// is open, but partial-write corruption is still avoided).
 	if instanceID != "" {
 		defaultPath := filepath.Join(filepath.Dir(configPath), "resourcenamingtool_config_default.json")
-		if err := os.WriteFile(defaultPath, configJson, 0600); err != nil {
-			logWarn(ctx, "saveProviderConfigToFile: Failed to write default fallback config: %s", err.Error())
+		tmpPath := defaultPath + ".tmp"
+		if err := os.WriteFile(tmpPath, configJson, 0600); err != nil {
+			logWarn(ctx, "saveProviderConfigToFile: Failed to write default fallback tmp: %s", err.Error())
+		} else if err := os.Rename(tmpPath, defaultPath); err != nil {
+			logWarn(ctx, "saveProviderConfigToFile: Failed to rename default fallback: %s", err.Error())
+			_ = os.Remove(tmpPath)
 		} else {
 			logDebug(ctx, "saveProviderConfigToFile: Wrote default fallback config to: %s", defaultPath)
 		}
