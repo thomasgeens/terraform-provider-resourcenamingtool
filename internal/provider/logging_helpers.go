@@ -15,14 +15,14 @@ import (
 func logDebug(ctx context.Context, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	tflog.Debug(ctx, msg)
-	log.Println("[DEBUG]", msg)
+	log.Println("[DEBUG]", msg) // #nosec G706 -- provider-internal debug data, not user-controlled input
 }
 
 // LogInfo logs an info message to both tflog and standard logger
 func logInfo(ctx context.Context, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	tflog.Info(ctx, msg)
-	log.Println("[INFO]", msg)
+	log.Println("[INFO]", msg) // #nosec G706 -- provider-internal
 }
 
 // LogWarn logs a warning message to both tflog and standard logger

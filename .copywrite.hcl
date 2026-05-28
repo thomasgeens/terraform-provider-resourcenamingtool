@@ -26,6 +26,10 @@ project {
     # examples used within documentation (prose)
     "examples/**",
 
+    # auto-generated docs — copyright is embedded via the HCL code blocks that
+    # come from examples/**; updating docs directly conflicts with docs-generate-check
+    "docs/**",
+
     # GitHub issue template configuration
     ".github/ISSUE_TEMPLATE/*.yml",
 

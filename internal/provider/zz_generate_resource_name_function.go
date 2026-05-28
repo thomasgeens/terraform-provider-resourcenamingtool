@@ -22,22 +22,16 @@ var generateResourceNameMarkdownDescription string
 
 // GenerateResourceNameFunction implements function.Function with provider access
 type GenerateResourceNameFunction struct {
-	// Store the provider configuration pointer itself
-	config *resourcenamingtoolProviderModel
+	// Store the provider itself so Run always reads the current p.config.
+	// Storing p.config at factory time is wrong: Functions() is called during
+	// GetProviderSchema (before ValidateConfig), so p.config is nil at that point.
+	provider *resourcenamingtoolFunctionsProvider
 }
 
-// NewGenerateResourceNameFunction creates a new instance with the provider config
-func NewGenerateResourceNameFunction(ctx context.Context, config *resourcenamingtoolProviderModel) function.Function { // Added ctx
-	f := &GenerateResourceNameFunction{
-		config: config, // Store the pointer directly, don't dereference
-	}
-
-	instanceIDFromConfig := "<uninitialized>"
-	if f.config != nil && !f.config.ProviderInstanceID.IsNull() && !f.config.ProviderInstanceID.IsUnknown() {
-		instanceIDFromConfig = f.config.ProviderInstanceID.ValueString()
-	}
-	logDebug(ctx, "GenerateResourceNameFunction New: Function Instance %p, Initialized with ProviderInstanceID from constructor: '%s'", f, instanceIDFromConfig)
-
+// NewGenerateResourceNameFunction creates a new instance bound to the provider.
+func NewGenerateResourceNameFunction(ctx context.Context, provider *resourcenamingtoolFunctionsProvider) function.Function {
+	f := &GenerateResourceNameFunction{provider: provider}
+	logDebug(ctx, "GenerateResourceNameFunction New: Function Instance %p, bound to provider %p", f, provider)
 	return f
 }
 
@@ -74,13 +68,12 @@ func (f *GenerateResourceNameFunction) Definition(ctx context.Context, req funct
 	})
 }
 
-
 func (f *GenerateResourceNameFunction) Run(ctx context.Context, req function.RunRequest, resp *function.RunResponse) {
-	instanceIDFromFConfig := "<f.config_is_nil_or_id_is_unknown>"
-	if f.config != nil && !f.config.ProviderInstanceID.IsNull() && !f.config.ProviderInstanceID.IsUnknown() {
-		instanceIDFromFConfig = f.config.ProviderInstanceID.ValueString()
+	instanceID := "<provider_config_nil>"
+	if f.provider != nil && f.provider.config != nil && !f.provider.config.ProviderInstanceID.IsNull() && !f.provider.config.ProviderInstanceID.IsUnknown() {
+		instanceID = f.provider.config.ProviderInstanceID.ValueString()
 	}
-	logDebug(ctx, "GenerateResourceNameFunction Run: Function Instance %p, ProviderInstanceID from f.config: '%s'", f, instanceIDFromFConfig)
+	logDebug(ctx, "GenerateResourceNameFunction Run: Function Instance %p, ProviderInstanceID: '%s'", f, instanceID)
 
 	logDebug(ctx, "Invoking GenerateResourceNameFunction...")
 
@@ -115,18 +108,24 @@ func (f *GenerateResourceNameFunction) Run(ctx context.Context, req function.Run
 		})
 	}
 
-	// Get configuration.
-	// Primary: f.config (in-memory, set by ValidateConfig in same process — no file I/O).
-	// Fallback: file (cross-process or function evaluated before ValidateConfig runs).
+	// Get configuration by reading the provider at call time (lazy binding).
+	// f.provider.config is set by ValidateConfig/Configure; reading it here (not at
+	// factory time) ensures we always see the current value, even though Functions()
+	// is called during GetProviderSchema before ValidateConfig runs.
+	// Fallback: file (multi-instance or edge case where ValidateConfig never ran).
 	// Last resort: empty defaults (caller must supply all parameters explicitly).
 	var config *resourcenamingtoolProviderModel
-	if f.config != nil {
-		configCopy := *f.config
+	if f.provider != nil && f.provider.config != nil {
+		configCopy := *f.provider.config
 		config = &configCopy
-		logDebug(ctx, "Run: Using in-memory provider config (f.config)")
+		logDebug(ctx, "Run: Using in-memory provider config (provider.config)")
 	} else {
-		logDebug(ctx, "Run: f.config nil, attempting file-based shared config")
-		sharedConfig := GetSharedProviderConfig(ctx, "")
+		logDebug(ctx, "Run: provider.config nil, attempting file-based shared config")
+		fileInstanceID := ""
+		if f.provider != nil && f.provider.config != nil {
+			fileInstanceID = f.provider.config.ProviderInstanceID.ValueString()
+		}
+		sharedConfig := GetSharedProviderConfig(ctx, fileInstanceID)
 		if sharedConfig != nil {
 			config = sharedConfig
 			logDebug(ctx, "Run: Using shared provider config from file")
