@@ -17,15 +17,34 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// safeInstanceIDChars rejects anything that could traverse directories or
-// produce unexpected filenames. Only alphanumerics, hyphens, and underscores
-// are allowed — the same characters Terraform accepts for provider aliases.
-var safeInstanceIDChars = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+// validInstanceIDPattern matches the safe filename character set.
+// Only alphanumerics, hyphens, and underscores are permitted — the same
+// characters Terraform accepts for provider aliases — so there is a 1-to-1
+// mapping between provider_instance_id values and config filenames.
+var validInstanceIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]*$`)
 
-// sanitizeInstanceID replaces any character outside the safe set with "_" so
-// that the value can be used as a filename component without path-traversal risk.
-func sanitizeInstanceID(id string) string {
-	return safeInstanceIDChars.ReplaceAllString(id, "_")
+// ValidateInstanceID returns an error when id contains characters that fall
+// outside the safe filename set. Call this in ValidateConfig so Terraform
+// surfaces a clear diagnostic rather than silently producing wrong filenames.
+func ValidateInstanceID(id string) error {
+	if !validInstanceIDPattern.MatchString(id) {
+		return fmt.Errorf("provider_instance_id %q contains characters outside [a-zA-Z0-9_-]; "+
+			"use only alphanumerics, hyphens, and underscores to avoid filename collisions", id)
+	}
+	return nil
+}
+
+// sanitizeInstanceID is a last-resort defense used when building file paths.
+// ValidateConfig should have already rejected non-conforming IDs; this guard
+// exists so a bypass (e.g. a future code path that skips validation) cannot
+// write outside the intended directory.
+func sanitizeInstanceID(ctx context.Context, id string) string {
+	if !validInstanceIDPattern.MatchString(id) {
+		logWarn(ctx, "sanitizeInstanceID: id %q bypassed ValidateConfig validation; replacing unsafe chars", id)
+		re := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+		return re.ReplaceAllString(id, "_")
+	}
+	return id
 }
 
 // Global variables for the provider
@@ -268,7 +287,7 @@ func getProviderConfigFilePath(ctx context.Context, instanceID string) string {
 	configDir := getProviderConfigDir(ctx)
 	filename := "resourcenamingtool_config_default.json"
 	if instanceID != "" {
-		safe := sanitizeInstanceID(instanceID)
+		safe := sanitizeInstanceID(ctx, instanceID)
 		filename = fmt.Sprintf("resourcenamingtool_config_%s.json", safe)
 	} else {
 		logWarn(ctx, "Provider 'provider_instance_id' is not set or is empty. Using default configuration file 'resourcenamingtool_config_default.json'. This may lead to conflicts if multiple instances of the provider are configured without unique 'provider_instance_id' values.")
@@ -413,13 +432,12 @@ func saveProviderConfigToFile(ctx context.Context, config *resourcenamingtoolPro
 		defaultPath := filepath.Join(filepath.Dir(configPath), "resourcenamingtool_config_default.json")
 		tmpPath := defaultPath + ".tmp"
 		if err := os.WriteFile(tmpPath, configJson, 0600); err != nil {
-			logWarn(ctx, "saveProviderConfigToFile: Failed to write default fallback tmp: %s", err.Error())
+			return fmt.Errorf("saveProviderConfigToFile: failed to write default fallback tmp %s: %w", tmpPath, err)
 		} else if err := os.Rename(tmpPath, defaultPath); err != nil {
-			logWarn(ctx, "saveProviderConfigToFile: Failed to rename default fallback: %s", err.Error())
 			_ = os.Remove(tmpPath)
-		} else {
-			logDebug(ctx, "saveProviderConfigToFile: Wrote default fallback config to: %s", defaultPath)
+			return fmt.Errorf("saveProviderConfigToFile: failed to rename default fallback to %s: %w", defaultPath, err)
 		}
+		logDebug(ctx, "saveProviderConfigToFile: Wrote default fallback config to: %s", defaultPath)
 	}
 
 	logDebug(ctx, "Successfully wrote configuration to file: %s", configPath)

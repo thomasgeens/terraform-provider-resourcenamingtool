@@ -413,6 +413,15 @@ func (p *resourcenamingtoolFunctionsProvider) ValidateConfig(ctx context.Context
 	instanceID := configModel.ProviderInstanceID.ValueString()
 	logDebug(ctx, "Provider ValidateConfig: Instance %p, ProviderInstanceID from HCL: '%s'", p, instanceID)
 
+	if err := ValidateInstanceID(instanceID); err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("provider_instance_id"),
+			"Invalid provider_instance_id",
+			err.Error(),
+		)
+		return
+	}
+
 	// Validate additional components if provided
 	logDebug(ctx, "Validating additional components...")
 	// Check if additional components are provided and validate them
