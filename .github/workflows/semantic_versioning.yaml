@@ -96,6 +96,8 @@ jobs:
           TITLE="${{ github.event.pull_request.title }}"
           ESCAPED_BRANCH="${BRANCH//\"/\\\"}"
           ESCAPED_TITLE="${TITLE//\"/\\\"}"
+          # Fetch the PR branch (checkout only fetches the base branch by default)
+          git fetch origin "${ESCAPED_BRANCH}"
           # Perform merge with escaped values
           git merge --no-ff "origin/${ESCAPED_BRANCH}" -m "${ESCAPED_TITLE}"
       - name: Semantic Release
