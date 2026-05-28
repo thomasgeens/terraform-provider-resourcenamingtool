@@ -121,11 +121,7 @@ func (f *GenerateResourceNameFunction) Run(ctx context.Context, req function.Run
 		logDebug(ctx, "Run: Using in-memory provider config (provider.config)")
 	} else {
 		logDebug(ctx, "Run: provider.config nil, attempting file-based shared config")
-		fileInstanceID := ""
-		if f.provider != nil && f.provider.config != nil {
-			fileInstanceID = f.provider.config.ProviderInstanceID.ValueString()
-		}
-		sharedConfig := GetSharedProviderConfig(ctx, fileInstanceID)
+		sharedConfig := GetSharedProviderConfig(ctx, "")
 		if sharedConfig != nil {
 			config = sharedConfig
 			logDebug(ctx, "Run: Using shared provider config from file")
@@ -630,8 +626,8 @@ func generateResourceName(ctx context.Context, params ResourceNamingParametersVa
 		{"resource_prefix", []string{"{resource_prefix}", "{resource_prefix:full}", "{resource_prefix:short}", "{resource_prefix:char}"}, "full"},
 		{"basename", []string{"{basename}", "{basename:full}", "{basename:short}", "{basename:char}"}, "full"},
 		{"environment", []string{"{environment}", "{environment:full}", "{environment:short}", "{environment:char}", "{env}", "{e}"}, "full"},
-		{"region", []string{"{region}", "{region:full}", "{region:short}", "{region:char}", "{location}", "{loc}", "{r}"}, "full"},
-		{"location", []string{"{location:full}", "{location:short}", "{location:char}"}, "full"},
+		{"region", []string{"{region}", "{region:full}", "{region:short}", "{region:char}", "{loc}", "{r}"}, "full"},
+		{"location", []string{"{location}", "{location:full}", "{location:short}", "{location:char}"}, "full"},
 		{"instance", []string{"{instance}", "{instance:full}", "{instance:short}", "{instance:char}", "{inst}", "{i}"}, "full"},
 
 		// Organization components
