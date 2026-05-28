@@ -430,10 +430,24 @@ func saveProviderConfigToFile(ctx context.Context, config *resourcenamingtoolPro
 	// is open, but partial-write corruption is still avoided).
 	if instanceID != "" {
 		defaultPath := filepath.Join(filepath.Dir(configPath), "resourcenamingtool_config_default.json")
-		tmpPath := defaultPath + ".tmp"
-		if err := os.WriteFile(tmpPath, configJson, 0600); err != nil {
+		// Use os.CreateTemp in the same directory so the rename is guaranteed to be
+		// on the same filesystem (required for atomic rename) and the unique name
+		// prevents concurrent instances from clobbering each other's in-progress write.
+		tmpFile, err := os.CreateTemp(filepath.Dir(configPath), "resourcenamingtool_config_default_*.json.tmp")
+		if err != nil {
+			return fmt.Errorf("saveProviderConfigToFile: failed to create default fallback tmp: %w", err)
+		}
+		tmpPath := tmpFile.Name()
+		if _, err := tmpFile.Write(configJson); err != nil {
+			_ = tmpFile.Close()
+			_ = os.Remove(tmpPath)
 			return fmt.Errorf("saveProviderConfigToFile: failed to write default fallback tmp %s: %w", tmpPath, err)
-		} else if err := os.Rename(tmpPath, defaultPath); err != nil {
+		}
+		if err := tmpFile.Close(); err != nil {
+			_ = os.Remove(tmpPath)
+			return fmt.Errorf("saveProviderConfigToFile: failed to close default fallback tmp %s: %w", tmpPath, err)
+		}
+		if err := os.Rename(tmpPath, defaultPath); err != nil {
 			_ = os.Remove(tmpPath)
 			return fmt.Errorf("saveProviderConfigToFile: failed to rename default fallback to %s: %w", defaultPath, err)
 		}
