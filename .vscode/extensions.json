@@ -1,0 +1,25 @@
+{
+  "recommendations": [
+    // Go
+    "golang.go",
+    // Terraform (for examples/)
+    "hashicorp.terraform",
+    // GitHub / Git
+    "github.vscode-github-actions",
+    "github.vscode-pull-request-github",
+    "eamodio.gitlens",
+    "adam-bender.commit-message-editor",
+    // Linting / Formatting
+    "trunk.io",
+    "editorconfig.editorconfig",
+    "redhat.vscode-yaml",
+    "ibm.output-colorizer",
+    // Makefile
+    "ms-vscode.makefile-tools",
+    // Markdown
+    "yzhang.markdown-all-in-one",
+    "bierner.github-markdown-preview",
+    // Copilot
+    "github.copilot-chat"
+  ]
+}

@@ -1,0 +1,5 @@
+# Copyright Thomas Geens 2025, 2026
+# SPDX-License-Identifier: MIT
+
+# These files are embedded fragments, not standalone documents — first line need not be h1
+MD041: false
