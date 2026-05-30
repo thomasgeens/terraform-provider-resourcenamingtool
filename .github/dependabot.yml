@@ -12,6 +12,9 @@ updates:
     directory: /tools
     schedule:
       interval: daily
+    commit-message:
+      prefix: ci
+      include: scope
   - package-ecosystem: github-actions
     directory: /
     schedule:

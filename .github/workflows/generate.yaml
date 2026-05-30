@@ -1,0 +1,52 @@
+name: CI - Auto-generate Docs (Dependabot)
+run-name: Auto-generate Docs <${{ github.ref_name }}>
+
+# Runs on every Dependabot push. Regenerates docs via `make generate` and
+# commits back if the new tool version produces different output — prevents
+# the generate job in test.yaml from failing with a stale-docs diff.
+on:
+  push:
+    branches:
+      - dependabot/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-generate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auto-generate:
+    name: Auto-generate Docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: true # required: git push uses the GITHUB_TOKEN credential
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_wrapper: false
+
+      - run: make generate
+
+      - name: Commit generated docs if changed
+        run: |
+          if git diff --quiet; then
+            echo "No documentation changes — skipping commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ci(docs): regenerate docs after dependency update"
+          git push
