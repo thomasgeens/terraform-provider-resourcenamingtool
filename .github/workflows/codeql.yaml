@@ -1,0 +1,46 @@
+# Copyright Thomas Geens 2025, 2026
+# SPDX-License-Identifier: MIT
+
+# Standalone CodeQL workflow — runs on every PR to main regardless of which
+# files changed. Keeps GitHub Code Scanning enforcement satisfied even for
+# Dependabot PRs that only update workflow files or other non-Go paths.
+name: SAST - CodeQL
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17
+        with:
+          languages: go
+          config-file: .github/codeql.yml
+
+      - run: go build -v .
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17
