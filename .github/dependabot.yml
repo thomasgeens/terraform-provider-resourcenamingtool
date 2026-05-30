@@ -8,6 +8,10 @@ updates:
     schedule:
       # Check for updates to Go modules every weekday
       interval: daily
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
   - package-ecosystem: gomod
     directory: /tools
     schedule:
@@ -15,7 +19,15 @@ updates:
     commit-message:
       prefix: ci
       include: scope
+    groups:
+      go-tools:
+        patterns:
+          - "*"
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: daily
+    groups:
+      github-actions:
+        patterns:
+          - "*"
