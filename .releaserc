@@ -48,7 +48,7 @@
           },
           {
             "type": "build",
-            "release": "minor"
+            "release": "patch"
           },
           {
             "type": "chore",
