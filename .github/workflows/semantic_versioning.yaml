@@ -7,6 +7,10 @@ on:
   pull_request:
     branches:
       - main
+      - beta
+      - alpha
+      - next
+      - next-major
     types: [opened, synchronize, reopened]
     paths:
       # Provider changes
@@ -34,6 +38,10 @@ on:
   push:
     branches:
       - main
+      - beta
+      - alpha
+      - next
+      - next-major
     paths:
       # Provider changes
       - go.mod
@@ -51,8 +59,7 @@ on:
       - LICENSE # License changes
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 env:
   # This environment variable is used to determine if the workflow is running in dry-run mode or not.
@@ -66,43 +73,41 @@ jobs:
   semantic_versioning:
     name: Semantic Versioning
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       new_release_git_tag: ${{ steps.set_output.outputs.new_release_git_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-          # If using the @semantic-release/git plugin for protected branches, avoid persisting
-          # credentials as part of actions/checkout@v4 by setting the parameter persist-
-          # credentials: false. This credential does not have the required permission to operate
-          # on protected branches.
-          # persist-credentials: false
+          persist-credentials: false
       - name: Report dry-run mode
+        env:
+          IS_DRY_RUN: ${{ env.DRY_RUN }}
         run: |
-          if [ "${{ env.DRY_RUN }}" = "true" ]; then
+          if [ "$IS_DRY_RUN" = "true" ]; then
             echo "Running in dry-run mode"
           else
             echo "Running in normal mode (CI)"
           fi
-      # trunk-ignore(checkov/CKV_GHA_2)
       - name: Temporarily merge PR branch
         if: ${{ github.event_name == 'pull_request' }}
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          # Configure git
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          # Escape branch name and PR title for safe usage
-          BRANCH="${{ github.event.pull_request.head.ref }}"
-          TITLE="${{ github.event.pull_request.title }}"
-          ESCAPED_BRANCH="${BRANCH//\"/\\\"}"
-          ESCAPED_TITLE="${TITLE//\"/\\\"}"
-          # Fetch the PR branch (checkout only fetches the base branch by default)
+          ESCAPED_BRANCH="${PR_HEAD_REF//\"/\\\"}"
+          ESCAPED_TITLE="${PR_TITLE//\"/\\\"}"
           git fetch origin "${ESCAPED_BRANCH}"
-          # Perform merge with escaped values
           git merge --no-ff "origin/${ESCAPED_BRANCH}" -m "${ESCAPED_TITLE}"
       - name: Semantic Release
         id: semantic
+        # trunk-ignore(zizmor/unpinned-uses): cycjimmy doesn't publish verifiable commit SHAs alongside tags
         uses: cycjimmy/semantic-release-action@v4.2.0
         with:
           semantic_version: 24.2.3
@@ -115,26 +120,41 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Semantic Release Output
+        env:
+          NEW_RELEASE_PUBLISHED: ${{ steps.semantic.outputs.new_release_published }}
+          NEW_RELEASE_VERSION: ${{ steps.semantic.outputs.new_release_version }}
+          NEW_RELEASE_MAJOR: ${{ steps.semantic.outputs.new_release_major_version }}
+          NEW_RELEASE_MINOR: ${{ steps.semantic.outputs.new_release_minor_version }}
+          NEW_RELEASE_PATCH: ${{ steps.semantic.outputs.new_release_patch_version }}
+          NEW_RELEASE_CHANNEL: ${{ steps.semantic.outputs.new_release_channel }}
+          NEW_RELEASE_NOTES: ${{ steps.semantic.outputs.new_release_notes }}
+          NEW_RELEASE_GIT_HEAD: ${{ steps.semantic.outputs.new_release_git_head }}
+          NEW_RELEASE_GIT_TAG: ${{ steps.semantic.outputs.new_release_git_tag }}
+          LAST_RELEASE_VERSION: ${{ steps.semantic.outputs.last_release_version }}
+          LAST_RELEASE_GIT_HEAD: ${{ steps.semantic.outputs.last_release_git_head }}
+          LAST_RELEASE_GIT_TAG: ${{ steps.semantic.outputs.last_release_git_tag }}
         run: |
           echo "Semantic Release Outputs:"
-          echo "New release published: ${{ steps.semantic.outputs.new_release_published }}"
-          echo "New release version: ${{ steps.semantic.outputs.new_release_version }}"
-          echo "New release major version: ${{ steps.semantic.outputs.new_release_major_version }}"
-          echo "New release minor version: ${{ steps.semantic.outputs.new_release_minor_version }}"
-          echo "New release patch version: ${{ steps.semantic.outputs.new_release_patch_version }}"
-          echo "New release channel: ${{ steps.semantic.outputs.new_release_channel }}"
-          echo "New release notes: ${{ steps.semantic.outputs.new_release_notes }}"
-          echo "New release git head: ${{ steps.semantic.outputs.new_release_git_head }}"
-          echo "New release git tag: ${{ steps.semantic.outputs.new_release_git_tag }}"
-          echo "Last release version: ${{ steps.semantic.outputs.last_release_version }}"
-          echo "Last release git head: ${{ steps.semantic.outputs.last_release_git_head }}"
-          echo "Last release git tag: ${{ steps.semantic.outputs.last_release_git_tag }}"
+          echo "New release published: $NEW_RELEASE_PUBLISHED"
+          echo "New release version: $NEW_RELEASE_VERSION"
+          echo "New release major version: $NEW_RELEASE_MAJOR"
+          echo "New release minor version: $NEW_RELEASE_MINOR"
+          echo "New release patch version: $NEW_RELEASE_PATCH"
+          echo "New release channel: $NEW_RELEASE_CHANNEL"
+          echo "New release notes: $NEW_RELEASE_NOTES"
+          echo "New release git head: $NEW_RELEASE_GIT_HEAD"
+          echo "New release git tag: $NEW_RELEASE_GIT_TAG"
+          echo "Last release version: $LAST_RELEASE_VERSION"
+          echo "Last release git head: $LAST_RELEASE_GIT_HEAD"
+          echo "Last release git tag: $LAST_RELEASE_GIT_TAG"
       - name: Set jobs tag output
         id: set_output
+        env:
+          NEW_RELEASE_PUBLISHED: ${{ steps.semantic.outputs.new_release_published }}
+          NEW_RELEASE_GIT_TAG: ${{ steps.semantic.outputs.new_release_git_tag }}
         run: |
-          # Only set output if a new release was published
-          if [ "${{ steps.semantic.outputs.new_release_published }}" == "true" ]; then
-            echo "new_release_git_tag=${{ steps.semantic.outputs.new_release_git_tag }}" >> $GITHUB_OUTPUT
+          if [ "$NEW_RELEASE_PUBLISHED" == "true" ]; then
+            echo "new_release_git_tag=$NEW_RELEASE_GIT_TAG" >> $GITHUB_OUTPUT
           else
             echo "new_release_git_tag=" >> $GITHUB_OUTPUT
           fi
@@ -142,6 +162,8 @@ jobs:
   call_release:
     name: Call workflow CD - Create version release package
     needs: semantic_versioning
+    permissions:
+      contents: write
     if: needs.semantic_versioning.outputs.new_release_git_tag != ''
     uses: ./.github/workflows/release.yaml
     with:
