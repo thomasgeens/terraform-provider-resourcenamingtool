@@ -1,4 +1,4 @@
-# Resource Naming Tool Provider
+## Resource Naming Tool Provider
 
 The **Resource Naming Tool** provider offers a flexible and standardized way to generate resource names across various cloud environments, including Azure, AWS, and GCP. It aligns with established best practices such as Microsoft's Cloud Adoption Framework (CAF), AWS Well-Architected Framework (WAF), and Google Cloud naming conventions.
 

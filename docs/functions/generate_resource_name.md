@@ -8,7 +8,7 @@ description: |-
 
 # function: generate_resource_name
 
-# Resource Name Generator
+## Resource Name Generator
 
 Generates standardized, consistent resource names for cloud resources following industry best practices.
 
@@ -112,7 +112,7 @@ additional_components = {
   "department.fullname" = "engineering"
   "department.shortcode" = "eng"
   "department.char" = "e"
-"team.fullname" = "platform"
+  "team.fullname" = "platform"
   "team.shortcode" = "plf"
   "team.char" = "p"
 }
@@ -123,7 +123,7 @@ additional_components = {
 Generating a resource name with component values, custom patterns, and custom components:
 
 ```hcl
-resource "arm_storage_account" "backup_prod" {
+resource "azurerm_storage_account" "backup_prod" {
   name                     = provider::resourcenamingtool::generate_resource_name(
     [
       {
@@ -160,7 +160,7 @@ resource "arm_storage_account" "backup_prod" {
 }
 ```
 
-# Cloud Provider Resource Type Examples
+## Cloud Provider Resource Type Examples
 
 ## Azure Resource Management (ARM)
 
@@ -236,7 +236,7 @@ provider "resourcenamingtool" {
   }
 
   additional_naming_patterns = {
-	// Azure Core Resources
+    // Azure Core Resources
     "azurerm_resource_group"         = "rg-{basename}-{environment:short}-{region:short}"
     "azurerm_virtual_network"        = "vnet-{basename}-{environment:short}-{region:short}"
     "azurerm_subnet"                 = "snet-{basename}-{environment:short}-{instance}"
@@ -245,32 +245,31 @@ provider "resourcenamingtool" {
 
     // Azure Compute Resources
     "azurerm_virtual_machine"        = "vm-{basename}-{environment:short}-{region:short}-{instance}"
-	"azurerm_availability_set"       = "avs-{basename}-{environment:short}-{region:short}"
+    "azurerm_availability_set"       = "avs-{basename}-{environment:short}-{region:short}"
     "azurerm_vm_scale_set"           = "vmss-{basename}-{environment:short}-{region:short}"
     "azurerm_kubernetes_cluster"     = "aks-{basename}-{environment:short}-{region:short}"
 
     // Azure Storage Resources
     "azurerm_storage_account"        = "{basename}{environment:char}{region:char}{instance}"
-	"azurerm_storage_container"      = "sc-{basename}-{environment:short}"
+    "azurerm_storage_container"      = "sc-{basename}-{environment:short}"
 
     // Azure Database Resources
     "azurerm_sql_server"             = "sql-{basename}-{environment:short}-{region:short}"
-	"azurerm_sql_database"           = "sqldb-{basename}-{environment:short}"
+    "azurerm_sql_database"           = "sqldb-{basename}-{environment:short}"
     "azurerm_cosmosdb_account"       = "cosmos-{basename}-{environment:short}-{region:short}"
-	"azurerm_mysql_server"           = "mysql-{basename}-{environment:short}-{region:short}"
+    "azurerm_mysql_server"           = "mysql-{basename}-{environment:short}-{region:short}"
     "azurerm_postgresql_server"      = "psql-{basename}-{environment:short}-{region:short}"
 
     // Azure App Resources
     "azurerm_app_service"            = "app-{basename}-{environment:short}-{region:short}"
-	"azurerm_app_service_plan"       = "plan-{basename}-{environment:short}-{region:short}"
+    "azurerm_app_service_plan"       = "plan-{basename}-{environment:short}-{region:short}"
     "azurerm_function_app"           = "func-{basename}-{environment:short}-{region:short}"
 
     // Azure Security Resources
     "azurerm_key_vault"              = "kv-{basename}-{environment:short}-{region:short}"
-    "azurerm_container_registry"     = "acr{basename}{environment:char}{region:char}"
     "azurerm_private_endpoint"       = "pe-{basename}-{environment:short}"
 
-	// Azure Integration Resources
+    // Azure Integration Resources
     "azurerm_servicebus_namespace"   = "sb-{basename}-{environment:short}-{region:short}"
     "azurerm_eventhub_namespace"     = "evh-{basename}-{environment:short}-{region:short}"
     "azurerm_eventgrid_topic"        = "evg-{basename}-{environment:short}-{region:short}"
@@ -601,7 +600,7 @@ terraform {
   required_providers {
     resourcenamingtool = {
       source  = "thomasgeens/resourcenamingtool"
-      version = "~> 0.1.0"
+      version = "~> 1.0"
     }
   }
 }

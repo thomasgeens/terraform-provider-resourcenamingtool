@@ -18,7 +18,7 @@ description: |-
 
 # resourcenamingtool Provider
 
-# Resource Naming Tool Provider
+## Resource Naming Tool Provider
 
 The **Resource Naming Tool** provider offers a flexible and standardized way to generate resource names across various cloud environments, including Azure, AWS, and GCP. It aligns with established best practices such as Microsoft's Cloud Adoption Framework (CAF), AWS Well-Architected Framework (WAF), and Google Cloud naming conventions.
 
@@ -52,7 +52,7 @@ terraform {
   required_providers {
     resourcenamingtool = {
       source  = "thomasgeens/resourcenamingtool"
-      version = "~> 0.1.0" // Specify the version of the provider
+      version = "~> 1.0" // Specify the version of the provider
     }
   }
 }
@@ -283,7 +283,8 @@ provider "resourcenamingtool" {
   }
 }
 
-# REMARK: Required initialization step to ensure the provider configuration is loaded during the ValidateConfig RPC
+# Required initialization step to ensure the provider configuration is loaded during the ValidateConfig RPC.
+# tflint-ignore: terraform_unused_declarations
 data "resourcenamingtool_status" "init" {}
 ```
 
