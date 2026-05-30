@@ -1,0 +1,11 @@
+# Repo-local git config with shared aliases.
+# Git does NOT auto-read this file — activate it once per clone:
+#   git config --local include.path ../.gitconfig
+# Or run: make setup  (does this automatically)
+
+[alias]
+	# Fuzzy-pick a GitHub org, clone all its non-archived repos and open them in VS Code
+	cloneorg = "!f() { org=$(gh org list | awk '{print $1}' | fzf) || return; editor=code; case \"${VSCODE_GIT_ASKPASS_MAIN:-}\" in *[Ii]nsiders*) editor=code-insiders;; esac; gh repo list \"$org\" --no-archived -L 500 --json name -q '.[].name' | while read -r repo_name; do [ -z \"$repo_name\" ] && continue; if [ ! -d \"$repo_name/.git\" ]; then gh repo clone \"$org/$repo_name\" \"$repo_name\"; fi; \"$editor\" -a \"$repo_name\" </dev/null; done; }; f"
+
+	# Fuzzy-pick a recent commit and create a fixup commit (auto-squashed on next rebase)
+	fixup = !git log -n 50 --pretty=format:'%h %s' --no-merges | fzf | cut -c -7 | xargs -o git commit --fixup

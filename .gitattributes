@@ -1,0 +1,27 @@
+# Normalize line endings
+* text=auto
+
+# Go — LF
+*.go text eol=lf
+
+# Config / IaC — LF
+*.tf text eol=lf
+*.hcl text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+
+# Scripts — LF
+*.sh text eol=lf
+
+# Docs — LF
+*.md text eol=lf
+*.txt text eol=lf
+
+# Makefile — LF
+GNUmakefile text eol=lf
+
+# Windows scripts — CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf

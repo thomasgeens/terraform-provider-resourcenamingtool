@@ -1,3 +1,6 @@
+# VS Code workspace files
+*.code-workspace
+
 # macOS system files
 # General macOS system files
 .DS_Store
