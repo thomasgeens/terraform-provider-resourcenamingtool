@@ -6,7 +6,7 @@ terraform {
   required_providers {
     resourcenamingtool = {
       source  = "thomasgeens/resourcenamingtool"
-      version = "~> 0.1.0" // Specify the version of the provider
+      version = "~> 1.0" // Specify the version of the provider
     }
   }
 }
@@ -237,5 +237,6 @@ provider "resourcenamingtool" {
   }
 }
 
-# REMARK: Required initialization step to ensure the provider configuration is loaded during the ValidateConfig RPC
+# Required initialization step to ensure the provider configuration is loaded during the ValidateConfig RPC.
+# tflint-ignore: terraform_unused_declarations
 data "resourcenamingtool_status" "init" {}

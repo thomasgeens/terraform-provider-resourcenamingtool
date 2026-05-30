@@ -304,7 +304,7 @@ Complete Example
 Generating a resource name with component values, custom patterns, and custom components:
 
 ```hcl
-resource "arm_storage_account" "backup_prod" {
+resource "azurerm_storage_account" "backup_prod" {
   name                     = provider::resourcenamingtool::generate_resource_name(
     [
       {

@@ -5,7 +5,7 @@ terraform {
   required_providers {
     resourcenamingtool = {
       source  = "thomasgeens/resourcenamingtool"
-      version = "~> 0.1.0"
+      version = "~> 1.0"
     }
   }
 }
