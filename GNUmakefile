@@ -80,6 +80,16 @@ generate: clean
     rm -rf docs/; \
 	cd tools; go generate ./...
 
+# Set up local development environment
+setup:
+	@echo "Installing dependencies via Homebrew..."
+	brew bundle
+	@echo "Activating repo-local git aliases..."
+	git config --local include.path ../.gitconfig
+	@echo "Installing trunk linters and git hooks..."
+	trunk install
+	@echo "Setup complete."
+
 # Help
 help:
 	@echo "Makefile commands:"
@@ -96,6 +106,7 @@ help:
 	@echo "  run                     - Run the provider locally"
 	@echo "  generate                - Re-generate documentation"
 	@echo "  update_terraformrc      - Update ~/.terraformrc file"
+	@echo "  setup                   - Install dev dependencies and activate git aliases"
 	@echo "  help                    - Show this help message"
 
-.PHONY: verify install build test test_provider test_datasource test_function fmt lint clean run generate update_terraformrc help
+.PHONY: verify install build test test_provider test_datasource test_function fmt lint clean run generate update_terraformrc setup help
