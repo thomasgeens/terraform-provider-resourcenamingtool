@@ -1,0 +1,9 @@
+# Copyright Thomas Geens 2025, 2026
+# SPDX-License-Identifier: MIT
+
+# MD013: line length — disabled; prose and tables don't need 80-char wrapping
+MD013: false
+# MD033: inline HTML — disabled because tfplugindocs generates <a id="..."> anchors in docs/
+MD033: false
+# MD041: first line must be h1 — disabled; description files in internal/ are embedded fragments
+MD041: false
