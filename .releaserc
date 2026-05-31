@@ -87,6 +87,6 @@
         "changelogFile": "CHANGELOG.md"
       }
     ],
-    "@semantic-release/github"
+    ["@semantic-release/github", {"draftRelease": true}]
   ]
 }
