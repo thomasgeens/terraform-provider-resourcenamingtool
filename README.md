@@ -80,7 +80,7 @@ Full schema, component reference, and cloud-provider examples:
 
 ## Pre-release versions
 
-Pre-release builds (`beta`, `alpha`, `next`) are published to the Terraform Registry for early testing. Open-ended constraints like `~> 1.0` never select them — you must pin the exact version:
+Pre-release builds (`beta`, `alpha`, `next`, `next-major`) are published to the Terraform Registry for early testing. Open-ended constraints like `~> 1.0` never select them — you must pin the exact version:
 
 ```hcl
 terraform {
