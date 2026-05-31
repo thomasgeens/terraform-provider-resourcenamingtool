@@ -78,6 +78,23 @@ output "storage_account_name" {
 Full schema, component reference, and cloud-provider examples:
 [registry.terraform.io/providers/thomasgeens/resourcenamingtool](https://registry.terraform.io/providers/thomasgeens/resourcenamingtool/latest/docs)
 
+## Pre-release versions
+
+Pre-release builds (`beta`, `alpha`, `next`) are published to the Terraform Registry for early testing. Open-ended constraints like `~> 1.0` never select them — you must pin the exact version:
+
+```hcl
+terraform {
+  required_providers {
+    resourcenamingtool = {
+      source  = "thomasgeens/resourcenamingtool"
+      version = "1.4.0-beta.1"
+    }
+  }
+}
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#pre-release) for how pre-release channels map to branches.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, commit conventions, and the release process.
